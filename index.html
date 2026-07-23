@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Missed Call Callback System</title>
+  <link rel="stylesheet" href="styles.css?v=text-qa-1" />
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="title">
+        <h1>Missed Call Callback System</h1>
+        <p>Capture missed callers, collect the reason for calling, and give staff a clear queue for fast follow-up.</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-secondary" href="book.html">Open Client Page</a>
+        <button class="btn btn-primary" type="button">Admin Settings</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="dashboard" type="button">Staff Dashboard</button>
+      <button class="tab" data-tab="admin" type="button">Owner/Admin</button>
+      <button class="tab" data-tab="client" type="button">Client Portal</button>
+      <button class="tab" data-tab="demo" type="button">Workflow Demo</button>
+    </div>
+
+    <section id="dashboard" class="view active">
+      <div class="grid-4">
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">Missed Calls Today</div>
+              <div class="metric-value">22</div>
+              <div class="metric-hint">+18% from yesterday</div>
+            </div>
+            <div class="icon-box" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">Pending Callbacks</div>
+              <div class="metric-value">11</div>
+              <div class="metric-hint">4 urgent follow-ups</div>
+            </div>
+            <div class="icon-box" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">Avg. Response Time</div>
+              <div class="metric-value">5.8m</div>
+              <div class="metric-hint">Within target SLA</div>
+            </div>
+            <div class="icon-box" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">Completed Today</div>
+              <div class="metric-value">17</div>
+              <div class="metric-hint">3 no-shows</div>
+            </div>
+            <div class="icon-box" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-main section-gap">
+        <div class="card">
+          <div class="card-head">
+            <h2>Interaction Queue</h2>
+            <p>Missed calls, form submissions, SMS replies, and scheduled callbacks in one staff workspace.</p>
+
+            <div class="toolbar">
+              <div class="search-wrap">
+                <input id="searchInput" type="text" placeholder="Search name, phone, reason, or ID" />
+              </div>
+              <div class="filter-wrap">
+                <select id="filterSelect">
+                  <option value="all">All</option>
+                  <option value="high">High Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="low">Low Priority</option>
+                  <option value="awaiting">Awaiting Response</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="progress">In Progress</option>
+                  <option value="escalated">Escalated</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Caller</th>
+                    <th>Source</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Assigned</th>
+                    <th>Last Activity</th>
+                  </tr>
+                </thead>
+                <tbody id="interactionTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card-head">
+              <h3>AI Triage</h3>
+              <p>Suggested response, urgency, and routing guidance for the selected caller.</p>
+            </div>
+            <div class="card-body stack" id="dashboardAiPreview">
+              <div class="notice">
+                <h4>Suggested response</h4>
+                <p>Select an interaction to see triage details.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Escalation Watch</h3>
+            </div>
+            <div class="card-body">
+              <div class="progress-group">
+                <div class="progress-head"><span>Unaddressed high priority</span><strong>66%</strong></div>
+                <div class="progress"><span style="width:66%"></span></div>
+              </div>
+              <div class="progress-group">
+                <div class="progress-head"><span>Same-day callback completion</span><strong>79%</strong></div>
+                <div class="progress"><span style="width:79%"></span></div>
+              </div>
+              <div class="progress-group">
+                <div class="progress-head"><span>Voicemails transcribed</span><strong>92%</strong></div>
+                <div class="progress"><span style="width:92%"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Business Alerts</h3>
+              <p>Latest callback notifications prepared for the business.</p>
+            </div>
+            <div class="card-body">
+              <div id="businessAlertsFeed" class="summary-list">
+                <div class="subtle">Start the callback API to show business alerts.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="admin" class="view">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Business Settings</h2>
+            <p>Manage hours, response rules, escalation timing, and client message defaults.</p>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div>
+                <label>Business Hours</label>
+                <input value="Mon-Fri, 8:00 AM - 6:00 PM" />
+              </div>
+              <div>
+                <label>Default Callback Buffer</label>
+                <input value="15 minutes" />
+              </div>
+            </div>
+
+            <div class="field-gap">
+              <label>Auto-Response Template</label>
+              <textarea>Sorry we missed your call. Tap your secure link to tell us why you called and request a callback.</textarea>
+            </div>
+
+            <div class="switch-row">
+              <div>
+                <strong>Escalation Alerts</strong>
+                <div class="subtle">Notify managers when urgent callbacks wait too long.</div>
+              </div>
+              <div class="switch on"></div>
+            </div>
+
+            <div class="switch-row">
+              <div>
+                <strong>Staff Access Controls</strong>
+                <div class="subtle">Limit queue visibility by role and location.</div>
+              </div>
+              <div class="switch on"></div>
+            </div>
+
+            <div class="switch-row">
+              <div>
+                <strong>Daily Summary Emails</strong>
+                <div class="subtle">Send callback performance summaries at the end of the day.</div>
+              </div>
+              <div class="switch on"></div>
+            </div>
+
+            <div class="actions field-gap">
+              <button class="btn btn-primary" type="button">Save Settings</button>
+              <button class="btn btn-secondary" type="button">Preview Client Message</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Staff & Roles</h2>
+            <p>Assign missed-call requests to managers, staff, and on-call responders.</p>
+          </div>
+          <div class="card-body">
+            <div class="staff-row">
+              <div>
+                <strong>Maya Reynolds</strong>
+                <div class="subtle">Manager</div>
+              </div>
+              <div class="actions">
+                <span class="badge">Active</span>
+                <button class="btn btn-secondary" type="button">Edit</button>
+              </div>
+            </div>
+
+            <div class="staff-row">
+              <div>
+                <strong>Noah Green</strong>
+                <div class="subtle">Staff</div>
+              </div>
+              <div class="actions">
+                <span class="badge">Active</span>
+                <button class="btn btn-secondary" type="button">Edit</button>
+              </div>
+            </div>
+
+            <div class="staff-row">
+              <div>
+                <strong>Alex Chen</strong>
+                <div class="subtle">Staff</div>
+              </div>
+              <div class="actions">
+                <span class="badge">On Call</span>
+                <button class="btn btn-secondary" type="button">Edit</button>
+              </div>
+            </div>
+
+            <button class="btn btn-primary full-width field-gap" type="button">Add Staff Member</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-head">
+          <h2>Analytics Overview</h2>
+          <p>Track missed calls, callback completion, response time, and queue health.</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-grid">
+            <div class="chart-card">
+              <div class="chart-title">Missed Calls vs Callbacks</div>
+              <div class="bars" id="missedChart"></div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-title">Average Response Time</div>
+              <div class="line-chart" id="responseChart"></div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-title">Interaction Status Mix</div>
+              <div class="pie-legend">
+                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-blue"></span>Completed</div><strong>42%</strong></div>
+                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-violet"></span>Scheduled</div><strong>26%</strong></div>
+                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-amber"></span>Awaiting</div><strong>18%</strong></div>
+                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-rose"></span>Escalated</div><strong>14%</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="client" class="view">
+      <div class="card">
+        <div class="card-head">
+          <h2>Client Callback Portal</h2>
+          <p>A simple caller-facing flow for request details, preferred callback time, and status tracking.</p>
+        </div>
+        <div class="card-body">
+          <div class="portal-steps">
+            <div class="step-box active" id="status-received"><div class="step-label">Step 1</div><div class="step-title">Received</div></div>
+            <div class="step-box" id="status-progress"><div class="step-label">Step 2</div><div class="step-title">In Progress</div></div>
+            <div class="step-box" id="status-completed"><div class="step-label">Step 3</div><div class="step-title">Completed</div></div>
+          </div>
+
+          <div id="clientStep1" class="section-gap">
+            <div class="portal-actions">
+              <a class="btn btn-primary action-card" href="book.html">Request Callback</a>
+              <button class="btn btn-secondary action-card" onclick="goClientStep(2, 'progress')" type="button">Choose Appointment</button>
+              <button class="btn btn-soft action-card" onclick="goClientStep(2, 'progress')" type="button">Leave Details</button>
+            </div>
+          </div>
+
+          <div id="clientStep2" class="hidden section-gap">
+            <div class="grid-2">
+              <div class="notice">
+                <h4>Callback details</h4>
+                <div class="stack field-gap">
+                  <div><label>Preferred Date</label><input type="date" /></div>
+                  <div><label>Preferred Time</label><input type="time" /></div>
+                  <div><label>Notes</label><textarea placeholder="Tell us what you need help with..."></textarea></div>
+                  <div><label>Upload document (optional)</label><button class="btn btn-secondary full-width" type="button">Attach File</button></div>
+                  <button class="btn btn-primary" onclick="goClientStep(3, 'completed')" type="button">Submit Request</button>
+                </div>
+              </div>
+
+              <div class="notice">
+                <h4>What happens next</h4>
+                <ul class="clean">
+                  <li>Your request is logged instantly.</li>
+                  <li>Staff receives the caller details in the dashboard.</li>
+                  <li>Urgent cases can be escalated automatically.</li>
+                  <li>You receive SMS and email reminders plus status updates.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div id="clientStep3" class="hidden section-gap">
+            <div class="notice center notice-lg">
+              <h3>Confirmation Sent</h3>
+              <p>Your callback request has been received. A team member will follow up shortly.</p>
+              <div class="actions center-actions field-gap">
+                <button class="btn btn-secondary" onclick="resetClientFlow()" type="button">Start Over</button>
+                <a class="btn btn-primary" href="book.html">Open Request Page</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="view">
+      <div class="card">
+        <div class="hero">
+          <small>Automated missed-call follow-up</small>
+          <h2>Recover customers after a missed call.</h2>
+          <p>The system texts the caller a secure link, collects their reason for calling, and updates the business dashboard with a clear callback task.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="advanceDemo()" type="button">Run Workflow</button>
+            <a class="btn btn-secondary" href="book.html">Open Client Page</a>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="simulation-steps" id="simSteps"></div>
+
+          <div class="sim-grid">
+            <div class="notice">
+              <h4>Live Workflow</h4>
+              <div id="timeline" class="field-gap"></div>
+            </div>
+
+            <div class="stack">
+              <div class="notice">
+                <h4>Secure access</h4>
+                <p>Role-based access, audit history, and signed client links keep requests controlled.</p>
+              </div>
+              <div class="notice">
+                <h4>Built for staff</h4>
+                <p>Give staff a shared queue, owners a performance view, and clients a simple request form.</p>
+              </div>
+              <div class="notice">
+                <h4>Triage ready</h4>
+                <p>Surface urgent callers, suggest responses, recommend callback windows, and forecast staffing needs.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="detailDrawer" class="drawer hidden">
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <div>
+          <h2 id="drawerClientName">Caller detail</h2>
+          <p id="drawerClientMeta">Interaction detail and AI triage</p>
+        </div>
+        <button id="closeDrawerBtn" class="btn btn-secondary" type="button">Close</button>
+      </div>
+
+      <div class="drawer-body">
+        <div class="drawer-section">
+          <h3>Callback history</h3>
+          <div id="drawerHistory" class="stack"></div>
+        </div>
+
+        <div class="drawer-section">
+          <h3>Notes</h3>
+          <div id="drawerNotes" class="stack"></div>
+        </div>
+
+        <div class="drawer-section">
+          <h3>Messages sent</h3>
+          <div id="drawerMessages" class="stack"></div>
+        </div>
+
+        <div class="drawer-section">
+          <h3>AI triage</h3>
+          <div id="drawerAiPanel" class="stack"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=text-qa-1"></script>
+</body>
+</html>

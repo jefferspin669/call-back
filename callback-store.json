@@ -1,0 +1,152 @@
+{
+  "missedCalls": [
+    {
+      "id": "CALL-1783818363633-01393e",
+      "token": "c707911320c59da5ed124a9ff3846d05eeed",
+      "callerPhone": "(555) 888-0144",
+      "businessPhone": "(555) 010-9000",
+      "businessName": "Demo Business",
+      "callbackUrl": "http://127.0.0.1:4174/book.html?request=c707911320c59da5ed124a9ff3846d05eeed",
+      "smsText": "Sorry we missed your call. Tell us why you called and request a callback: http://127.0.0.1:4174/book.html?request=c707911320c59da5ed124a9ff3846d05eeed",
+      "status": "sms_ready",
+      "createdAt": "2026-07-12T01:06:03.634Z"
+    },
+    {
+      "id": "CALL-1783460523463-969c1b",
+      "token": "b45288ee1d8898b2ea7341e24113cf7f90bc",
+      "callerPhone": "(555) 777-0199",
+      "businessPhone": "(555) 010-9000",
+      "businessName": "Demo Business",
+      "callbackUrl": "http://127.0.0.1:4174/book.html?request=b45288ee1d8898b2ea7341e24113cf7f90bc",
+      "smsText": "Sorry we missed your call. Tell us why you called and request a callback: http://127.0.0.1:4174/book.html?request=b45288ee1d8898b2ea7341e24113cf7f90bc",
+      "status": "sms_ready",
+      "createdAt": "2026-07-07T21:42:03.465Z"
+    }
+  ],
+  "callbackRequests": [
+    {
+      "id": "INT-1783818363747-5a96df",
+      "missedCallId": "CALL-1783818363633-01393e",
+      "token": "c707911320c59da5ed124a9ff3846d05eeed",
+      "fullName": "Text QA Caller",
+      "phone": "(555) 888-0144",
+      "email": "textqa@example.com",
+      "reason": "Need a callback about a missed appointment call",
+      "details": "Please call after 3 PM.",
+      "timezone": "America/Chicago",
+      "date": null,
+      "time": null,
+      "dateLabel": "No preferred date",
+      "timeLabel": "No preferred time",
+      "startsAt": null,
+      "priority": "Medium",
+      "createdAt": "2026-07-12T01:06:03.748Z",
+      "confirmationText": "Sorry we missed your call. Your callback request was received.",
+      "businessAlertText": "Text QA Caller requested a callback about \"Need a callback about a missed appointment call\"."
+    },
+    {
+      "id": "INT-1783460609400-394ceb",
+      "missedCallId": "CALL-1783460523463-969c1b",
+      "token": "b45288ee1d8898b2ea7341e24113cf7f90bc",
+      "fullName": "Browser Verified Caller",
+      "phone": "(555) 777-0199",
+      "email": "verified@example.com",
+      "reason": "Need a callback about a missed sales call",
+      "details": "Please call back before closing today.",
+      "timezone": "America/Chicago",
+      "date": null,
+      "time": null,
+      "dateLabel": "No preferred date",
+      "timeLabel": "No preferred time",
+      "startsAt": null,
+      "priority": "Medium",
+      "createdAt": "2026-07-07T21:43:29.400Z",
+      "confirmationText": "Sorry we missed your call. Your callback request was received.",
+      "businessAlertText": "Browser Verified Caller requested a callback about \"Need a callback about a missed sales call\"."
+    },
+    {
+      "id": "INT-1783460543181-a79e5e",
+      "missedCallId": "CALL-1783460523463-969c1b",
+      "token": "b45288ee1d8898b2ea7341e24113cf7f90bc",
+      "fullName": "Jordan Price",
+      "phone": "(555) 777-0199",
+      "email": "jordan@example.com",
+      "reason": "Urgent quote request after missed call",
+      "details": "Please call back today. I am choosing between vendors.",
+      "timezone": "America/Chicago",
+      "date": null,
+      "time": null,
+      "dateLabel": "No preferred date",
+      "timeLabel": "No preferred time",
+      "startsAt": null,
+      "priority": "High",
+      "createdAt": "2026-07-07T21:42:23.181Z",
+      "confirmationText": "Sorry we missed your call. Your callback request was received.",
+      "businessAlertText": "Jordan Price requested a callback about \"Urgent quote request after missed call\"."
+    }
+  ],
+  "businessNotifications": [
+    {
+      "id": "NTF-1783818363748-962bf4",
+      "requestId": "INT-1783818363747-5a96df",
+      "channel": "Business Alert",
+      "recipient": "(555) 010-9000",
+      "subject": "New missed-call callback request",
+      "message": "Text QA Caller ((555) 888-0144) needs a callback. Reason: Need a callback about a missed appointment call.",
+      "status": "simulated_ready",
+      "createdAt": "2026-07-12T01:06:03.748Z"
+    },
+    {
+      "id": "NTF-1783460609400-16bd34",
+      "requestId": "INT-1783460609400-394ceb",
+      "channel": "Business Alert",
+      "recipient": "(555) 010-9000",
+      "subject": "New missed-call callback request",
+      "message": "Browser Verified Caller ((555) 777-0199) needs a callback. Reason: Need a callback about a missed sales call.",
+      "status": "ready_to_send",
+      "createdAt": "2026-07-07T21:43:29.400Z"
+    },
+    {
+      "id": "NTF-1783460543181-f17502",
+      "requestId": "INT-1783460543181-a79e5e",
+      "channel": "Business Alert",
+      "recipient": "(555) 010-9000",
+      "subject": "New missed-call callback request",
+      "message": "Jordan Price ((555) 777-0199) needs a callback. Reason: Urgent quote request after missed call.",
+      "status": "ready_to_send",
+      "createdAt": "2026-07-07T21:42:23.181Z"
+    }
+  ],
+  "smsOutbox": [
+    {
+      "id": "SMS-1783818363748-3cb1ba",
+      "to": "(555) 010-9000",
+      "body": "Text QA Caller ((555) 888-0144) needs a callback. Reason: Need a callback about a missed appointment call.",
+      "type": "business_alert",
+      "relatedId": "INT-1783818363747-5a96df",
+      "provider": "simulation",
+      "status": "simulated_ready",
+      "createdAt": "2026-07-12T01:06:03.748Z"
+    },
+    {
+      "id": "SMS-1783818363748-e75728",
+      "to": "(555) 888-0144",
+      "body": "Sorry we missed your call. Your callback request was received.",
+      "type": "caller_confirmation",
+      "relatedId": "INT-1783818363747-5a96df",
+      "provider": "simulation",
+      "status": "simulated_ready",
+      "createdAt": "2026-07-12T01:06:03.748Z"
+    },
+    {
+      "id": "SMS-1783818363635-da096f",
+      "to": "(555) 888-0144",
+      "body": "Sorry we missed your call. Tell us why you called and request a callback: http://127.0.0.1:4174/book.html?request=c707911320c59da5ed124a9ff3846d05eeed",
+      "type": "missed_call_auto_response",
+      "relatedId": "CALL-1783818363633-01393e",
+      "provider": "simulation",
+      "status": "simulated_ready",
+      "createdAt": "2026-07-12T01:06:03.635Z"
+    }
+  ]
+}

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Callback SaaS Frontend Suite</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --brand: #0f172a;
+      --brand-2: #334155;
+      --soft: #eef2ff;
+      --blue: #dbeafe;
+      --green: #dcfce7;
+      --amber: #fef3c7;
+      --rose: #ffe4e6;
+      --violet: #ede9fe;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: var(--text); background: var(--bg); }
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font: inherit; }
+    .app { min-height: 100vh; }
+    .shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+      color: white; padding: 22px; position: sticky; top: 0; height: 100vh; overflow: auto;
+    }
+    .logo { font-size: 1.2rem; font-weight: 800; letter-spacing: .01em; }
+    .logo small { display:block; color: rgba(255,255,255,.65); font-size: .78rem; margin-top: 6px; font-weight: 600; }
+    .nav-group { margin-top: 26px; }
+    .nav-label { color: rgba(255,255,255,.55); font-size: .76rem; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 10px; }
+    .nav-btn {
+      width: 100%; text-align: left; border: 1px solid transparent; background: transparent; color: rgba(255,255,255,.82);
+      border-radius: 16px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: .2s ease;
+    }
+    .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.08); color: white; }
+    .main { padding: 22px; }
+    .topbar { display:flex; gap: 16px; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+    .page-title h1 { margin:0; font-size: 2rem; line-height: 1.05; }
+    .page-title p { margin: 8px 0 0; color: var(--muted); }
+    .actions { display:flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      border: 0; border-radius: 14px; padding: 12px 16px; font-weight: 700; cursor:pointer; transition:.2s ease;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-dark { background: var(--brand); color: white; }
+    .btn-light { background: white; border: 1px solid var(--line); color: var(--text); }
+    .btn-soft { background: var(--soft); color: var(--brand); }
+    .btn-rose { background: var(--rose); color: #be123c; }
+    .view { display:none; }
+    .view.active { display:block; }
+    .card { background: var(--panel); border:1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow:hidden; }
+    .card-head { padding: 20px 20px 0; }
+    .card-head h2, .card-head h3 { margin: 0; }
+    .card-head p { margin: 8px 0 0; color: var(--muted); line-height: 1.5; }
+    .card-body { padding: 20px; }
+    .grid-2, .grid-3, .grid-4, .grid-main, .grid-wide { display:grid; gap: 18px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .grid-main { grid-template-columns: 1.3fr .9fr; }
+    .grid-wide { grid-template-columns: 1.2fr .8fr; }
+    .metric { padding: 20px; }
+    .metric .k { color: var(--muted); font-size: .92rem; }
+    .metric .v { font-size: 2rem; font-weight: 800; margin-top: 10px; }
+    .metric .s { font-size: .84rem; color: var(--muted); margin-top: 8px; }
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #334155 100%);
+      color:white; padding: 34px; border-radius: 28px; box-shadow: var(--shadow);
+    }
+    .hero h2 { margin:0; font-size: 3rem; line-height: 1.02; max-width: 740px; }
+    .hero p { margin: 14px 0 0; max-width: 760px; color: rgba(255,255,255,.78); line-height: 1.6; }
+    .hero-row { display:flex; justify-content:space-between; gap: 24px; margin-top: 22px; flex-wrap: wrap; }
+    .pill-row { display:flex; gap: 10px; flex-wrap: wrap; }
+    .pill { padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); font-size: .84rem; }
+    .pricing { position: relative; }
+    .pricing.popular { outline: 2px solid var(--brand); }
+    .price { font-size: 2.2rem; font-weight: 800; margin: 10px 0; }
+    .badge { display:inline-flex; padding: 6px 10px; border-radius:999px; font-size:.78rem; font-weight:800; border:1px solid var(--line); }
+    .b-blue { background: var(--blue); color:#1d4ed8; border-color: transparent; }
+    .b-green { background: var(--green); color:#166534; border-color: transparent; }
+    .b-amber { background: var(--amber); color:#92400e; border-color: transparent; }
+    .b-rose { background: var(--rose); color:#be123c; border-color: transparent; }
+    .b-violet { background: var(--violet); color:#6d28d9; border-color: transparent; }
+    .stack { display:grid; gap: 16px; }
+    .notice { border:1px solid var(--line); background:white; border-radius: 18px; padding: 16px; }
+    .notice h4 { margin:0 0 8px; }
+    .notice p, .muted { color: var(--muted); }
+    .muted { line-height: 1.5; }
+    .field { display:grid; gap: 8px; }
+    input, select, textarea { width:100%; border:1px solid var(--line); border-radius: 14px; padding: 12px 14px; background:white; color:var(--text); }
+    textarea { min-height: 110px; resize: vertical; }
+    .auth-shell { max-width: 1060px; margin: 0 auto; }
+    .auth-card { padding: 0; }
+    .auth-grid { display:grid; grid-template-columns: 1fr 1fr; }
+    .auth-side { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 32px; }
+    .auth-side h2 { margin:0; font-size: 2rem; }
+    .auth-side p { color: rgba(255,255,255,.78); line-height:1.6; }
+    .auth-form { padding: 28px; }
+    .form-grid { display:grid; gap: 14px; }
+    .inline { display:flex; gap: 12px; align-items:center; flex-wrap:wrap; }
+    .stepper { display:grid; grid-template-columns: repeat(6,1fr); gap: 10px; }
+    .step { border:1px solid var(--line); border-radius: 16px; padding: 12px; background:white; }
+    .step.active { outline:2px solid var(--brand); }
+    .step small { display:block; color:var(--muted); margin-bottom:6px; }
+    .table { width:100%; border-collapse: collapse; min-width: 820px; }
+    .table-wrap { overflow:auto; }
+    .table th, .table td { border-bottom:1px solid var(--line); padding: 14px 10px; text-align:left; vertical-align: top; }
+    .table th { color: var(--muted); font-size: .86rem; }
+    .toolbar { display:flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+    .toolbar > * { flex: 1 1 180px; }
+    .timeline { display:grid; gap: 12px; }
+    .timeline-item { border:1px solid var(--line); border-radius: 18px; padding: 14px; background:white; }
+    .calendar-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom: 14px; }
+    .week-grid { display:grid; grid-template-columns: 120px repeat(5,1fr); gap: 8px; }
+    .week-head, .week-cell { border:1px solid var(--line); border-radius: 16px; background:white; padding: 12px; }
+    .week-head { font-weight: 800; }
+    .week-time { font-weight: 700; color: var(--muted); }
+    .slot { border:1px dashed #cbd5e1; border-radius: 14px; padding: 10px; margin-bottom: 8px; background: #f8fafc; }
+    .chart { border:1px solid var(--line); border-radius: 18px; padding: 16px; }
+    .bar-list, .feed, .team-list, .settings-list { display:grid; gap: 12px; }
+    .bar-row { display:grid; grid-template-columns: 110px 1fr auto; gap: 10px; align-items:center; }
+    .track { height: 12px; background: #e5e7eb; border-radius: 999px; overflow:hidden; }
+    .fill { height:100%; background: var(--brand); }
+    .feed-item, .member, .setting { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; border:1px solid var(--line); border-radius: 18px; padding: 14px; background:white; }
+    .plan-note { position:absolute; top: 16px; right: 16px; }
+    .mobile-preview { display:grid; gap: 14px; max-width: 380px; margin: 0 auto; }
+    .phone { border:8px solid #0f172a; border-radius: 34px; background:white; padding: 14px; box-shadow: var(--shadow); }
+    .phone-top { height: 18px; width: 120px; background:#0f172a; border-radius: 0 0 14px 14px; margin: -14px auto 10px; }
+    .status-track { display:grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .status-box { border:1px solid var(--line); border-radius: 16px; padding: 12px; background:white; }
+    .search { position:relative; }
+    .hidden { display:none !important; }
+    @media (max-width: 1180px) {
+      .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .grid-3, .grid-main, .grid-wide { grid-template-columns: 1fr; }
+      .stepper { grid-template-columns: repeat(3,1fr); }
+      .auth-grid { grid-template-columns: 1fr; }
+      .week-grid { grid-template-columns: 90px repeat(5, minmax(140px, 1fr)); overflow:auto; }
+    }
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; height:auto; }
+      .main { padding: 16px; }
+      .hero { padding: 24px; }
+      .hero h2 { font-size: 2.2rem; }
+    }
+    @media (max-width: 640px) {
+      .grid-2, .grid-4, .stepper { grid-template-columns: 1fr; }
+      .page-title h1 { font-size: 1.6rem; }
+      .hero h2 { font-size: 1.8rem; }
+      .sidebar { padding: 16px; }
+      .topbar { margin-bottom: 14px; }
+      .week-grid { display:block; }
+      .week-head, .week-cell { margin-bottom: 10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app shell">
+  <aside class="sidebar">
+    <div class="logo">CallbackOS<small>Complete frontend suite prototype</small></div>
+
+    <div class="nav-group">
+      <p class="nav-label">Public</p>
+      <button class="nav-btn active" data-view="landing">Landing / Marketing</button>
+      <button class="nav-btn" data-view="client-status">Client Status Tracking</button>
+      <button class="nav-btn" data-view="mobile">Mobile Polish Preview</button>
+    </div>
+
+    <div class="nav-group">
+      <p class="nav-label">Auth & onboarding</p>
+      <button class="nav-btn" data-view="auth">Login / Signup / Forgot / 2FA</button>
+      <button class="nav-btn" data-view="onboarding">Onboarding Wizard</button>
+    </div>
+
+    <div class="nav-group">
+      <p class="nav-label">Core app</p>
+      <button class="nav-btn" data-view="interactions">Interactions Management</button>
+      <button class="nav-btn" data-view="calendar">Staff Calendar</button>
+      <button class="nav-btn" data-view="analytics">Analytics / Reports</button>
+      <button class="nav-btn" data-view="team">Team Management</button>
+      <button class="nav-btn" data-view="notifications">Notifications Center</button>
+      <button class="nav-btn" data-view="billing">Billing / Subscriptions</button>
+      <button class="nav-btn" data-view="integrations">Integrations</button>
+      <button class="nav-btn" data-view="settings">Settings</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="page-title">
+        <h1 id="topTitle">Landing / Marketing</h1>
+        <p id="topSubtitle">A polished SaaS marketing page and in-app frontend system for callback automation.</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-light">Preview Theme</button>
+        <button class="btn btn-dark">Request Live Demo</button>
+      </div>
+    </div>
+
+    <section id="landing" class="view active">
+      <div class="hero">
+        <h2>Never miss a client call again.</h2>
+        <p>Automate missed-call responses, let clients book callbacks instantly, track every interaction, and give your team a clean dashboard built for speed.</p>
+        <div class="hero-row">
+          <div class="pill-row">
+            <span class="pill">Missed call automation</span>
+            <span class="pill">Scheduling + reminders</span>
+            <span class="pill">AI prioritization</span>
+            <span class="pill">White-label SaaS</span>
+          </div>
+          <div class="actions">
+            <button class="btn btn-dark">Get Started</button>
+            <button class="btn btn-light">Watch Demo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-4" style="margin-top:18px;">
+        <div class="card metric"><div class="k">Missed calls recovered</div><div class="v">82%</div><div class="s">Average across active accounts</div></div>
+        <div class="card metric"><div class="k">Avg. response time</div><div class="v">5.8m</div><div class="s">Faster client follow-up</div></div>
+        <div class="card metric"><div class="k">Callbacks booked</div><div class="v">1,240</div><div class="s">This month demo data</div></div>
+        <div class="card metric"><div class="k">No-show reduction</div><div class="v">31%</div><div class="s">With reminders enabled</div></div>
+      </div>
+
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="card"><div class="card-head"><h3>How it works</h3><p>Client calls, system responds, team follows up.</p></div><div class="card-body stack"><div class="notice"><h4>1. Missed call detected</h4><p>The system catches the event and triggers an SMS/email instantly.</p></div><div class="notice"><h4>2. Client books callback</h4><p>Clients choose a time, leave a message, or request immediate help.</p></div><div class="notice"><h4>3. Staff responds fast</h4><p>Requests appear in the dashboard with notes, priority, and history.</p></div></div></div>
+        <div class="card"><div class="card-head"><h3>AI features</h3><p>Premium automation that saves staff time.</p></div><div class="card-body stack"><div class="notice"><h4>Urgency detection</h4><p>Flag repeat callers and likely frustrated clients.</p></div><div class="notice"><h4>Suggested responses</h4><p>Generate callback replies based on prior history.</p></div><div class="notice"><h4>Predictive scheduling</h4><p>Recommend best callback windows for each client.</p></div></div></div>
+        <div class="card"><div class="card-head"><h3>Demo CTA</h3><p>Designed to convert visitors into demo requests.</p></div><div class="card-body stack"><div class="notice"><h4>Live product tour</h4><p>Interactive demo for owners, managers, and staff.</p></div><div class="notice"><h4>White-label options</h4><p>Customize the dashboard with your own brand and colors.</p></div><button class="btn btn-dark">Book a Demo</button></div></div>
+      </div>
+
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="card pricing"><div class="card-head"><h3>Basic</h3><p>For small teams</p></div><div class="card-body"><div class="price">$49<span class="muted">/mo</span></div><div class="stack muted"><div>3 users</div><div>Missed-call SMS</div><div>Booking page</div><div>Basic analytics</div></div><div style="margin-top:16px;"><button class="btn btn-light">Choose Basic</button></div></div></div>
+        <div class="card pricing popular"><div class="plan-note badge b-blue">Most Popular</div><div class="card-head"><h3>Pro</h3><p>For growing teams</p></div><div class="card-body"><div class="price">$149<span class="muted">/mo</span></div><div class="stack muted"><div>15 users</div><div>Advanced routing</div><div>Reports + exports</div><div>AI suggestions</div></div><div style="margin-top:16px;"><button class="btn btn-dark">Choose Pro</button></div></div></div>
+        <div class="card pricing"><div class="card-head"><h3>Enterprise</h3><p>For multi-location operations</p></div><div class="card-body"><div class="price">Custom</div><div class="stack muted"><div>Unlimited users</div><div>White-label</div><div>Enterprise security</div><div>Dedicated onboarding</div></div><div style="margin-top:16px;"><button class="btn btn-light">Talk to Sales</button></div></div></div>
+      </div>
+    </section>
+
+    <section id="auth" class="view">
+      <div class="auth-shell">
+        <div class="card auth-card">
+          <div class="auth-grid">
+            <div class="auth-side">
+              <h2>Secure access for staff and admins</h2>
+              <p>Sign in to manage callbacks, monitor missed calls, and keep every client interaction on track.</p>
+              <div class="stack" style="margin-top:18px;">
+                <span class="badge b-green">SSO-ready UI</span>
+                <span class="badge b-blue">Two-factor screen included</span>
+                <span class="badge b-violet">Forgot/reset flow ready</span>
+              </div>
+            </div>
+            <div class="auth-form">
+              <div class="inline" style="margin-bottom:16px;">
+                <button class="btn btn-dark auth-tab active-auth" data-auth="login">Login</button>
+                <button class="btn btn-light auth-tab" data-auth="signup">Signup</button>
+                <button class="btn btn-light auth-tab" data-auth="forgot">Forgot</button>
+                <button class="btn btn-light auth-tab" data-auth="twofa">2FA</button>
+              </div>
+
+              <div class="auth-pane" id="auth-login">
+                <div class="form-grid">
+                  <div class="field"><label>Email</label><input placeholder="owner@business.com"></div>
+                  <div class="field"><label>Password</label><input type="password" placeholder="••••••••"></div>
+                  <button class="btn btn-dark">Sign In</button>
+                </div>
+              </div>
+              <div class="auth-pane hidden" id="auth-signup">
+                <div class="form-grid">
+                  <div class="field"><label>Business name</label><input placeholder="Northside Dental"></div>
+                  <div class="field"><label>Work email</label><input placeholder="you@business.com"></div>
+                  <div class="field"><label>Password</label><input type="password"></div>
+                  <button class="btn btn-dark">Create Account</button>
+                </div>
+              </div>
+              <div class="auth-pane hidden" id="auth-forgot">
+                <div class="form-grid">
+                  <div class="field"><label>Email address</label><input placeholder="team@business.com"></div>
+                  <button class="btn btn-dark">Send Reset Link</button>
+                </div>
+              </div>
+              <div class="auth-pane hidden" id="auth-twofa">
+                <div class="form-grid">
+                  <div class="field"><label>6-digit verification code</label><input placeholder="123456"></div>
+                  <button class="btn btn-dark">Verify and Continue</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="onboarding" class="view">
+      <div class="card">
+        <div class="card-head"><h2>Onboarding wizard</h2><p>Guide new businesses through setup in a clear SaaS flow.</p></div>
+        <div class="card-body">
+          <div class="stepper">
+            <div class="step active"><small>Step 1</small><strong>Business Info</strong></div>
+            <div class="step"><small>Step 2</small><strong>Hours</strong></div>
+            <div class="step"><small>Step 3</small><strong>Team Invite</strong></div>
+            <div class="step"><small>Step 4</small><strong>Templates</strong></div>
+            <div class="step"><small>Step 5</small><strong>Integrations</strong></div>
+            <div class="step"><small>Step 6</small><strong>Branding</strong></div>
+          </div>
+          <div class="grid-2" style="margin-top:18px;">
+            <div class="stack">
+              <div class="field"><label>Business name</label><input value="Northside Dental Group"></div>
+              <div class="field"><label>Primary phone</label><input value="(312) 555-0133"></div>
+              <div class="field"><label>Primary industry</label><select><option>Healthcare</option><option>Legal</option><option>Home Services</option></select></div>
+              <div class="field"><label>Default missed-call message</label><textarea>Sorry we missed your call. Use this secure link to book a callback, leave a message, or get help.</textarea></div>
+            </div>
+            <div class="stack">
+              <div class="notice"><h4>Setup checklist</h4><p>Business profile, hours, team members, messaging templates, telephony connection, and brand color.</p></div>
+              <div class="notice"><h4>Quick preview</h4><p>Your branded booking page will show logo, business hours, and available callback times.</p></div>
+              <div class="actions"><button class="btn btn-light">Back</button><button class="btn btn-dark">Save & Continue</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="interactions" class="view">
+      <div class="grid-main">
+        <div class="card">
+          <div class="card-head"><h2>Interactions management</h2><p>Full queue with filters, notes, assignments, and status actions.</p><div class="toolbar"><input placeholder="Search client, phone, ID"><select><option>All priorities</option><option>High</option><option>Medium</option><option>Low</option></select><select><option>All statuses</option><option>Awaiting</option><option>Scheduled</option><option>In Progress</option><option>Escalated</option></select></div></div>
+          <div class="card-body table-wrap">
+            <table class="table">
+              <thead><tr><th>Client</th><th>Channel</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Actions</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Ava Johnson</strong><div class="muted">Billing callback request</div></td><td>Missed Call</td><td><span class="badge b-amber">Awaiting</span></td><td><span class="badge b-rose">High</span></td><td>Maya</td><td><button class="btn btn-light">Open</button></td></tr>
+                <tr><td><strong>Liam Carter</strong><div class="muted">Scheduled for 2:30 PM</div></td><td>SMS Reply</td><td><span class="badge b-blue">Scheduled</span></td><td><span class="badge">Medium</span></td><td>Noah</td><td><button class="btn btn-light">Open</button></td></tr>
+                <tr><td><strong>Sophia Patel</strong><div class="muted">Service question</div></td><td>Voicemail</td><td><span class="badge b-violet">In Progress</span></td><td><span class="badge">Low</span></td><td>Alex</td><td><button class="btn btn-light">Open</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card"><div class="card-head"><h3>Selected interaction</h3><p>View notes, history, and routing controls.</p></div><div class="card-body stack"><div class="notice"><h4>Ava Johnson · INT-1001</h4><p>Repeat caller with urgent billing question. AI recommends manager review.</p></div><div class="field"><label>Internal note</label><textarea>Client called twice within 20 minutes. Offer callback within 10 minutes.</textarea></div><div class="inline"><button class="btn btn-dark">Mark In Progress</button><button class="btn btn-light">Assign to Maya</button></div></div></div>
+          <div class="card"><div class="card-head"><h3>Activity timeline</h3></div><div class="card-body timeline"><div class="timeline-item"><strong>10:04 AM</strong><div class="muted">Missed call detected, SMS sent automatically.</div></div><div class="timeline-item"><strong>10:08 AM</strong><div class="muted">Client opened booking page.</div></div><div class="timeline-item"><strong>10:11 AM</strong><div class="muted">High priority flag added.</div></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="calendar" class="view">
+      <div class="card">
+        <div class="card-head"><h2>Staff calendar</h2><p>Daily and weekly callback planning with visibility into staff load and reschedules.</p></div>
+        <div class="card-body">
+          <div class="calendar-toolbar"><div class="inline"><button class="btn btn-light">← Previous</button><strong>Week of March 16</strong><button class="btn btn-light">Next →</button></div><div class="inline"><select><option>Weekly view</option><option>Daily view</option></select><select><option>All staff</option><option>Maya</option><option>Noah</option></select></div></div>
+          <div class="week-grid">
+            <div class="week-head">Time</div><div class="week-head">Mon</div><div class="week-head">Tue</div><div class="week-head">Wed</div><div class="week-head">Thu</div><div class="week-head">Fri</div>
+            <div class="week-cell week-time">9:00 AM</div><div class="week-cell"><div class="slot">Ava · Callback</div></div><div class="week-cell"><div class="slot">Open</div></div><div class="week-cell"><div class="slot">Liam · Follow-up</div></div><div class="week-cell"><div class="slot">Open</div></div><div class="week-cell"><div class="slot">Sophia · Callback</div></div>
+            <div class="week-cell week-time">10:00 AM</div><div class="week-cell"><div class="slot">Buffer</div></div><div class="week-cell"><div class="slot">Ethan · Escalated</div></div><div class="week-cell"><div class="slot">Open</div></div><div class="week-cell"><div class="slot">Open</div></div><div class="week-cell"><div class="slot">Manager review</div></div>
+            <div class="week-cell week-time">11:00 AM</div><div class="week-cell"><div class="slot">Open</div></div><div class="week-cell"><div class="slot">Open</div></div><div class="week-cell"><div class="slot">Open</div></div><div class="week-cell"><div class="slot">Reschedule block</div></div><div class="week-cell"><div class="slot">Open</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="analytics" class="view">
+      <div class="grid-4">
+        <div class="card metric"><div class="k">Missed calls</div><div class="v">182</div><div class="s">Last 30 days</div></div>
+        <div class="card metric"><div class="k">Callback completion</div><div class="v">79%</div><div class="s">Within 24 hours</div></div>
+        <div class="card metric"><div class="k">Average response</div><div class="v">5.8m</div><div class="s">Across all staff</div></div>
+        <div class="card metric"><div class="k">No-show rate</div><div class="v">9%</div><div class="s">After reminders</div></div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="card"><div class="card-head"><h3>Peak call times</h3></div><div class="card-body bar-list"><div class="bar-row"><span>9 AM</span><div class="track"><div class="fill" style="width:52%"></div></div><strong>52</strong></div><div class="bar-row"><span>11 AM</span><div class="track"><div class="fill" style="width:88%"></div></div><strong>88</strong></div><div class="bar-row"><span>2 PM</span><div class="track"><div class="fill" style="width:74%"></div></div><strong>74</strong></div><div class="bar-row"><span>4 PM</span><div class="track"><div class="fill" style="width:61%"></div></div><strong>61</strong></div></div></div>
+        <div class="card"><div class="card-head"><h3>Staff performance</h3></div><div class="card-body bar-list"><div class="bar-row"><span>Maya</span><div class="track"><div class="fill" style="width:91%"></div></div><strong>91%</strong></div><div class="bar-row"><span>Noah</span><div class="track"><div class="fill" style="width:83%"></div></div><strong>83%</strong></div><div class="bar-row"><span>Alex</span><div class="track"><div class="fill" style="width:76%"></div></div><strong>76%</strong></div></div></div>
+        <div class="card"><div class="card-head"><h3>Saved reports</h3></div><div class="card-body stack"><div class="notice"><h4>Weekly operations summary</h4><p>Missed calls, callbacks, no-shows, and top repeat callers.</p></div><div class="notice"><h4>Monthly team report</h4><p>Response time, completions, escalations, and staff load.</p></div><button class="btn btn-dark">Export CSV / PDF</button></div></div>
+      </div>
+    </section>
+
+    <section id="team" class="view">
+      <div class="grid-main">
+        <div class="card"><div class="card-head"><h2>Team management</h2><p>Manage roles, access, MFA status, and performance snapshot.</p></div><div class="card-body team-list"><div class="member"><span><strong>Maya Reynolds</strong><br><span class="muted">Manager · MFA enabled</span></span><span class="inline"><span class="badge b-green">Active</span><button class="btn btn-light">Edit</button></span></div><div class="member"><span><strong>Noah Green</strong><br><span class="muted">Staff · MFA enabled</span></span><span class="inline"><span class="badge b-blue">On Call</span><button class="btn btn-light">Edit</button></span></div><div class="member"><span><strong>Alex Chen</strong><br><span class="muted">Staff · MFA pending</span></span><span class="inline"><span class="badge b-amber">Pending MFA</span><button class="btn btn-light">Edit</button></span></div><button class="btn btn-dark">Invite Team Member</button></div></div>
+        <div class="stack"><div class="card"><div class="card-head"><h3>Permissions</h3></div><div class="card-body stack"><div class="notice"><h4>Owner</h4><p>Billing, settings, all analytics, staff access.</p></div><div class="notice"><h4>Manager</h4><p>Queue control, reporting, escalations, staff oversight.</p></div><div class="notice"><h4>Staff</h4><p>Callbacks, notes, statuses, assigned interactions.</p></div></div></div><div class="card"><div class="card-head"><h3>Audit preview</h3></div><div class="card-body feed"><div class="feed-item"><span><strong>Maya</strong><br><span class="muted">Changed business hours</span></span><strong>9:42 AM</strong></div><div class="feed-item"><span><strong>Owner</strong><br><span class="muted">Invited new team member</span></span><strong>8:15 AM</strong></div></div></div></div>
+      </div>
+    </section>
+
+    <section id="notifications" class="view">
+      <div class="grid-wide">
+        <div class="card"><div class="card-head"><h2>Notifications center</h2><p>Alerts for missed calls, escalations, reminders, and delivery issues.</p></div><div class="card-body feed"><div class="feed-item"><span><strong>Missed call alert</strong><br><span class="muted">Ava Johnson has not been assigned yet.</span></span><span class="badge b-rose">Urgent</span></div><div class="feed-item"><span><strong>Escalation alert</strong><br><span class="muted">Ethan Brooks has called 3 times in 40 minutes.</span></span><span class="badge b-amber">Needs review</span></div><div class="feed-item"><span><strong>SMS delivery issue</strong><br><span class="muted">Confirmation message failed for booking BK-1291.</span></span><span class="badge b-blue">Retry</span></div><div class="feed-item"><span><strong>Daily summary ready</strong><br><span class="muted">Team performance report is ready to send.</span></span><span class="badge b-green">Ready</span></div></div></div>
+        <div class="stack"><div class="card"><div class="card-head"><h3>Notification preferences</h3></div><div class="card-body stack"><div class="notice"><h4>Managers</h4><p>Escalations, missed SLAs, and repeat callers.</p></div><div class="notice"><h4>Staff</h4><p>Assignments, reschedules, reminder delivery status.</p></div><button class="btn btn-dark">Save Preferences</button></div></div></div>
+      </div>
+    </section>
+
+    <section id="billing" class="view">
+      <div class="grid-3">
+        <div class="card"><div class="card-head"><h2>Current plan</h2><p>Subscription and usage overview.</p></div><div class="card-body stack"><div class="price">Pro Plan</div><div class="notice"><h4>Monthly total</h4><p>$149 base + usage overages</p></div><div class="notice"><h4>Included usage</h4><p>5,000 messages · 15 users · advanced analytics</p></div><button class="btn btn-dark">Manage Plan</button></div></div>
+        <div class="card"><div class="card-head"><h2>Usage summary</h2></div><div class="card-body bar-list"><div class="bar-row"><span>SMS</span><div class="track"><div class="fill" style="width:68%"></div></div><strong>3,410</strong></div><div class="bar-row"><span>Users</span><div class="track"><div class="fill" style="width:53%"></div></div><strong>8 / 15</strong></div><div class="bar-row"><span>AI actions</span><div class="track"><div class="fill" style="width:39%"></div></div><strong>390</strong></div></div></div>
+        <div class="card"><div class="card-head"><h2>Invoices</h2></div><div class="card-body feed"><div class="feed-item"><span><strong>March 2026</strong><br><span class="muted">Paid automatically</span></span><strong>$149</strong></div><div class="feed-item"><span><strong>February 2026</strong><br><span class="muted">Paid automatically</span></span><strong>$149</strong></div><button class="btn btn-light">Update Card</button></div></div>
+      </div>
+    </section>
+
+    <section id="integrations" class="view">
+      <div class="grid-3">
+        <div class="card"><div class="card-head"><h2>Twilio</h2><p>Voice and SMS connection card.</p></div><div class="card-body stack"><span class="badge b-green">Connected</span><div class="notice"><h4>Phone number</h4><p>(312) 555-0133</p></div><button class="btn btn-light">Configure</button></div></div>
+        <div class="card"><div class="card-head"><h2>Google Calendar</h2><p>Sync callback bookings to staff calendars.</p></div><div class="card-body stack"><span class="badge b-blue">Connect</span><div class="notice"><h4>OAuth ready</h4><p>Prompt for consent and calendar selection.</p></div><button class="btn btn-dark">Connect Google</button></div></div>
+        <div class="card"><div class="card-head"><h2>Outlook</h2><p>Alternative enterprise calendar provider.</p></div><div class="card-body stack"><span class="badge b-blue">Connect</span><div class="notice"><h4>Microsoft 365</h4><p>Support room calendars and staff mailboxes.</p></div><button class="btn btn-dark">Connect Outlook</button></div></div>
+      </div>
+      <div class="grid-2" style="margin-top:18px;">
+        <div class="card"><div class="card-head"><h3>Email provider</h3></div><div class="card-body stack"><div class="notice"><h4>Postmark / SendGrid</h4><p>Use for callback confirmations, summaries, and alerts.</p></div><button class="btn btn-light">Edit SMTP/API</button></div></div>
+        <div class="card"><div class="card-head"><h3>Webhook settings</h3></div><div class="card-body stack"><div class="field"><label>Webhook URL</label><input value="https://api.example.com/webhooks/callbacks"></div><div class="field"><label>Signing secret</label><input type="password" value="secret-key"></div><button class="btn btn-dark">Save Webhooks</button></div></div>
+      </div>
+    </section>
+
+    <section id="settings" class="view">
+      <div class="grid-2">
+        <div class="card"><div class="card-head"><h2>Settings</h2><p>General controls, business rules, security, branding, and retention.</p></div><div class="card-body settings-list"><div class="setting"><span><strong>Business hours</strong><br><span class="muted">Mon–Fri, 8:00 AM–6:00 PM</span></span><button class="btn btn-light">Edit</button></div><div class="setting"><span><strong>Templates</strong><br><span class="muted">Auto-response SMS and email content</span></span><button class="btn btn-light">Edit</button></div><div class="setting"><span><strong>Escalation rules</strong><br><span class="muted">Urgent callers, repeat caller logic, SLA timers</span></span><button class="btn btn-light">Edit</button></div><div class="setting"><span><strong>Branding</strong><br><span class="muted">Logo, accent color, white-label text</span></span><button class="btn btn-light">Edit</button></div></div></div>
+        <div class="stack"><div class="card"><div class="card-head"><h3>Security</h3></div><div class="card-body stack"><div class="notice"><h4>MFA requirement</h4><p>Required for all staff and managers.</p></div><div class="notice"><h4>Session timeout</h4><p>30 minutes of inactivity.</p></div><button class="btn btn-dark">Security Settings</button></div></div><div class="card"><div class="card-head"><h3>Data retention</h3></div><div class="card-body stack"><div class="notice"><h4>Archiving</h4><p>Archive completed interactions after 90 days.</p></div><div class="notice"><h4>Deletion policy</h4><p>Delete archived records after 2 years unless retained.</p></div></div></div></div>
+      </div>
+    </section>
+
+    <section id="client-status" class="view">
+      <div class="grid-wide">
+        <div class="card"><div class="card-head"><h2>Client status tracking page</h2><p>Public-facing page where clients see callback progress, assigned team member, and reschedule/cancel options.</p></div><div class="card-body"><div class="status-track"><div class="status-box"><small class="muted">Step 1</small><strong>Received</strong></div><div class="status-box"><small class="muted">Step 2</small><strong>Scheduled</strong></div><div class="status-box"><small class="muted">Step 3</small><strong>Completed</strong></div></div><div class="stack" style="margin-top:16px;"><div class="notice"><h4>Current status</h4><p>Your callback is scheduled for Tuesday, March 17 at 2:30 PM.</p></div><div class="notice"><h4>Assigned staff</h4><p>Maya Reynolds will handle your callback.</p></div><div class="notice"><h4>Latest update</h4><p>Confirmation SMS sent. Calendar invite created.</p></div><div class="inline"><button class="btn btn-light">Reschedule</button><button class="btn btn-rose">Cancel</button><button class="btn btn-dark">Leave Feedback</button></div></div></div></div>
+        <div class="card"><div class="card-head"><h3>Feedback panel</h3><p>Optional rating UI after completion.</p></div><div class="card-body stack"><div class="notice"><h4>How was your experience?</h4><p>★★★★★</p></div><div class="field"><label>Comments</label><textarea placeholder="Share feedback about the callback experience"></textarea></div><button class="btn btn-dark">Submit Feedback</button></div></div>
+      </div>
+    </section>
+
+    <section id="mobile" class="view">
+      <div class="grid-2">
+        <div class="card"><div class="card-head"><h2>Mobile polish preview</h2><p>Optimized patterns for staff on the go.</p></div><div class="card-body mobile-preview"><div class="phone"><div class="phone-top"></div><div class="stack"><strong>Today’s queue</strong><div class="notice"><h4>Ava Johnson</h4><p>Urgent billing callback · 10:30 AM</p></div><div class="notice"><h4>Liam Carter</h4><p>Scheduled follow-up · 2:30 PM</p></div><button class="btn btn-dark">Open Queue</button></div></div><div class="phone"><div class="phone-top"></div><div class="stack"><strong>Notifications</strong><div class="notice"><h4>Escalation</h4><p>Repeat caller needs manager review.</p></div><div class="notice"><h4>SMS failed</h4><p>Retry message for BK-1291.</p></div></div></div></div></div>
+        <div class="card"><div class="card-head"><h3>Mobile checklist</h3></div><div class="card-body stack"><div class="notice"><h4>Touch targets</h4><p>Larger buttons, clear statuses, swipe-friendly cards.</p></div><div class="notice"><h4>Responsive tables</h4><p>Collapse rows into cards on smaller screens.</p></div><div class="notice"><h4>Quick actions</h4><p>One-tap call, note, assign, and reschedule.</p></div><div class="notice"><h4>Sticky nav</h4><p>Fast access to queue, notifications, and calendar.</p></div></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const meta = {
+    landing: ['Landing / Marketing', 'A polished SaaS marketing page and in-app frontend system for callback automation.'],
+    auth: ['Login / Signup / Forgot / 2FA', 'Secure entry flows for owners, managers, and staff.'],
+    onboarding: ['Onboarding Wizard', 'A guided setup experience for new businesses.'],
+    interactions: ['Interactions Management', 'Queue, notes, assignments, statuses, and history in one place.'],
+    calendar: ['Staff Calendar', 'Weekly scheduling view for callbacks and follow-ups.'],
+    analytics: ['Analytics / Reports', 'KPIs, performance trends, saved reports, and exports.'],
+    team: ['Team Management', 'Roles, invites, MFA status, and audit preview.'],
+    notifications: ['Notifications Center', 'Escalations, delivery issues, summaries, and alert settings.'],
+    billing: ['Billing / Subscriptions', 'Plans, usage, invoices, and payment controls.'],
+    integrations: ['Integrations', 'Telephony, calendar, email, webhooks, and API settings.'],
+    settings: ['Settings', 'Business hours, templates, escalation rules, branding, and retention.'],
+    'client-status': ['Client Status Tracking', 'Public page for callback progress, actions, and feedback.'],
+    mobile: ['Final Mobile Polish', 'Responsive patterns and mobile-ready staff experiences.']
+  };
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.view).classList.add('active');
+      document.getElementById('topTitle').textContent = meta[btn.dataset.view][0];
+      document.getElementById('topSubtitle').textContent = meta[btn.dataset.view][1];
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  document.querySelectorAll('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.auth-tab').forEach(t => {
+        t.classList.remove('btn-dark', 'active-auth');
+        t.classList.add('btn-light');
+      });
+      document.querySelectorAll('.auth-pane').forEach(p => p.classList.add('hidden'));
+      tab.classList.remove('btn-light');
+      tab.classList.add('btn-dark', 'active-auth');
+      document.getElementById('auth-' + tab.dataset.auth).classList.remove('hidden');
+    });
+  });
+</script>
+</body>
+</html>

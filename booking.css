@@ -1,0 +1,47 @@
+.booking-card{
+max-width:500px;
+margin:60px auto;
+background:white;
+padding:40px;
+border-radius:20px;
+box-shadow:0 10px 30px rgba(0,0,0,0.08);
+}
+
+.booking-card h1{
+margin-bottom:10px;
+}
+
+.booking-card p{
+color:#64748b;
+margin-bottom:20px;
+}
+
+.booking-card form{
+display:flex;
+flex-direction:column;
+gap:14px;
+}
+
+.booking-card label{
+font-weight:600;
+font-size:14px;
+}
+
+.booking-card input,
+.booking-card textarea{
+padding:12px;
+border:1px solid #e2e8f0;
+border-radius:10px;
+font-size:14px;
+}
+
+.booking-card button{
+margin-top:10px;
+padding:14px;
+border-radius:12px;
+font-weight:600;
+cursor:pointer;
+background:#0f172a;
+color:white;
+border:none;
+}

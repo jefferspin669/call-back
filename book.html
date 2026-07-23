@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Missed Call Callback Request</title>
+  <link rel="stylesheet" href="styles.css?v=text-qa-1" />
+</head>
+<body>
+  <div class="container">
+    <div class="actions section-gap">
+      <a class="btn btn-secondary" href="index.html">Back to Dashboard</a>
+    </div>
+
+    <section class="hero booking-hero">
+      <div class="hero-grid">
+        <div>
+          <h1>Tell us why you called</h1>
+          <p>
+            Sorry we missed your call. Send your name, reason for calling, and
+            any details the business should know before calling you back.
+          </p>
+          <div class="pill-row">
+            <span class="pill" id="timezonePill">Timezone: Detecting...</span>
+            <span class="pill" id="hoursPill">Business hours: Mon-Fri, 8:00 AM-6:00 PM</span>
+            <span class="pill">Text link from missed call</span>
+          </div>
+        </div>
+
+        <div class="summary">
+          <h3>What happens next</h3>
+          <p>1. Your request is sent to the business.</p>
+          <p>2. Staff sees who called and why.</p>
+          <p>3. Urgent requests are prioritized.</p>
+          <p>4. You get a text confirmation.</p>
+          <p>5. The dashboard updates automatically.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="layout section-gap">
+      <section class="card">
+        <div class="card-head">
+          <h2>Choose a preferred callback time</h2>
+          <p>
+            Pick a preferred window if you want. The request can still be sent
+            when you only provide your contact details and reason for calling.
+          </p>
+        </div>
+
+        <div class="card-body">
+          <div class="calendar-wrap">
+            <div class="calendar-top">
+              <button class="btn btn-secondary" id="prevMonthBtn" type="button">Prev</button>
+              <div class="month-title" id="monthTitle">Month YYYY</div>
+              <button class="btn btn-secondary" id="nextMonthBtn" type="button">Next</button>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+
+          <div class="slots">
+            <div class="slots-top">
+              <div>
+                <strong>Available time slots</strong>
+                <div class="subtle" id="selectedDateLabel">
+                  Select a date to view available times.
+                </div>
+              </div>
+
+              <div class="notice">
+                <strong>Local timezone</strong>
+                <p id="timezoneText">Detecting timezone...</p>
+              </div>
+            </div>
+
+            <div class="slot-grid" id="slotGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-stack">
+        <div class="card">
+          <div class="card-head">
+            <h2>Your callback request</h2>
+            <p>
+              This is the link a missed caller opens from the automatic text.
+              Submitting it alerts the business with the caller details.
+            </p>
+          </div>
+
+          <div class="card-body">
+            <div id="messageBox" class="message"></div>
+
+            <form id="bookingForm" class="booking-form">
+              <div class="row-2">
+                <div>
+                  <label for="fullName">Your name</label>
+                  <input id="fullName" type="text" placeholder="Jane Smith" required />
+                </div>
+
+                <div>
+                  <label for="phone">Best phone number</label>
+                  <input id="phone" type="tel" placeholder="(555) 123-4567" required />
+                </div>
+              </div>
+
+              <div class="row-2">
+                <div>
+                  <label for="email">Email (optional)</label>
+                  <input id="email" type="email" placeholder="jane@example.com" />
+                </div>
+
+                <div>
+                  <label for="timezone">Timezone</label>
+                  <input id="timezone" type="text" readonly />
+                </div>
+              </div>
+
+              <div>
+                <label for="reason">Reason for calling</label>
+                <textarea id="reason" placeholder="Example: I need pricing, help with an order, an appointment, or support." required></textarea>
+              </div>
+
+              <div>
+                <label for="details">Important details</label>
+                <textarea id="details" placeholder="Add order numbers, preferred staff member, urgency, or anything else the business should know."></textarea>
+              </div>
+
+              <div class="status-bar">
+                <div class="status-chip">
+                  <small>Preferred date</small>
+                  <strong id="summaryDate">Not selected</strong>
+                </div>
+                <div class="status-chip">
+                  <small>Preferred time</small>
+                  <strong id="summaryTime">Not selected</strong>
+                </div>
+                <div class="status-chip">
+                  <small>SMS status</small>
+                  <strong id="summarySms">Pending</strong>
+                </div>
+                <div class="status-chip">
+                  <small>Business alert</small>
+                  <strong id="summaryCalendar">Pending</strong>
+                </div>
+              </div>
+
+              <div class="cta-row">
+                <button type="submit" class="btn btn-primary">Send callback request</button>
+                <button type="button" id="rescheduleBtn" class="btn btn-secondary">Change time</button>
+                <button type="button" id="cancelBtn" class="btn btn-danger">Cancel request</button>
+              </div>
+
+              <div class="tiny">
+                Demo flow uses the shared local store so the business dashboard reflects each request.
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Business notification feed</h2>
+            <p>
+              This simulates the alert a business receives when a missed caller submits the form.
+            </p>
+          </div>
+          <div class="card-body">
+            <div id="dashboardFeed" class="summary-list"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Production handoff</h2>
+            <p>Use these points to make the workflow production-ready.</p>
+          </div>
+          <div class="card-body">
+            <div class="summary-list">
+              <div class="summary-row"><span>Missed-call SMS</span><strong>Twilio webhook</strong></div>
+              <div class="summary-row"><span>Business alert</span><strong>SMS / email / dashboard</strong></div>
+              <div class="summary-row"><span>Dashboard updates</span><strong>WebSocket / SSE / polling</strong></div>
+              <div class="summary-row"><span>Timezone handling</span><strong>Intl API + server normalization</strong></div>
+              <div class="summary-row"><span>Secure caller link</span><strong>Signed token URL</strong></div>
+              <div class="summary-row"><span>CRM handoff</span><strong>Webhook / Zapier / API</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="js/booking.js?v=text-qa-1"></script>
+</body>
+</html>
