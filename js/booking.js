@@ -660,11 +660,20 @@ function applySettings() {
   const timezoneText = document.getElementById("timezoneText");
   const timezonePill = document.getElementById("timezonePill");
   const hoursPill = document.getElementById("hoursPill");
+  const businessNameLabel = document.getElementById("businessNameLabel");
+  const responseTimeLabel = document.getElementById("responseTimeLabel");
 
   if (timezoneInput) timezoneInput.value = userTimezone;
   if (timezoneText) timezoneText.textContent = userTimezone;
   if (timezonePill) timezonePill.textContent = `Timezone: ${userTimezone}`;
   if (hoursPill) hoursPill.textContent = `Business hours: ${settings.businessHoursLabel}`;
+  if (businessNameLabel && !businessNameLabel.dataset.locked) {
+    businessNameLabel.textContent = settings.businessName || "Demo Business";
+  }
+  if (responseTimeLabel) {
+    responseTimeLabel.textContent = settings.responseTimeLabel
+      || `Usually within ${settings.bufferMinutes || 15} minutes during business hours`;
+  }
 }
 
 async function applyMissedCallContext() {
@@ -674,8 +683,14 @@ async function applyMissedCallContext() {
   try {
     const { missedCall, customerHistory = [], repeatCaller } = await callbackApi.getMissedCall(requestToken);
     const phoneInput = document.getElementById("phone");
+    const businessNameLabel = document.getElementById("businessNameLabel");
+
     if (phoneInput && missedCall?.callerPhone && !phoneInput.value) {
       phoneInput.value = missedCall.callerPhone;
+    }
+    if (businessNameLabel && missedCall?.businessName) {
+      businessNameLabel.textContent = missedCall.businessName;
+      businessNameLabel.dataset.locked = "true";
     }
     addDashboardEvent("Missed call", `Loaded secure request link for ${missedCall.callerPhone}.`);
     renderCustomerHistory(customerHistory);

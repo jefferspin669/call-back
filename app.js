@@ -48,6 +48,12 @@ function priorityClass(priority) {
   return "badge-low";
 }
 
+function priorityRowClass(priority) {
+  if (priority === "High") return "priority-high";
+  if (priority === "Medium") return "priority-medium";
+  return "priority-low";
+}
+
 function getInteractions() {
   return store.getInteractions();
 }
@@ -169,16 +175,16 @@ function renderTable() {
   });
 
   body.innerHTML = rows.map((item) => `
-    <tr class="clickable-row" data-id="${escapeHtml(item.id)}">
+    <tr class="clickable-row request-card ${priorityRowClass(item.priority)}" data-id="${escapeHtml(item.id)}">
       <td>
-        <strong>${escapeHtml(item.client)}</strong>
+        <strong class="caller-name">${escapeHtml(item.client)}</strong>
         <div class="subtle">${escapeHtml(item.phone)}</div>
         <div class="subtle">${escapeHtml(item.issue)}</div>
       </td>
       <td>${escapeHtml(item.channel)}</td>
       <td>
         <span class="badge ${priorityClass(item.priority)}">${escapeHtml(item.priority)}</span>
-        ${item.urgent ? '<span class="badge badge-high">Urgent</span>' : ""}
+        ${item.urgent ? '<span class="badge badge-urgent">Urgent</span>' : ""}
         ${item.repeatCaller ? '<span class="badge">Repeat Caller</span>' : ""}
         ${item.picture ? '<span class="badge">Photo</span>' : ""}
         ${item.voiceMemo ? '<span class="badge">Voice</span>' : ""}
@@ -472,6 +478,12 @@ function openDrawer(id) {
     clientMeta.textContent = `${interaction.id} - ${interaction.channel} - ${interaction.status}${interaction.urgent ? " - Urgent" : ""}`;
   }
 
+  const panel = drawer.querySelector(".drawer-panel");
+  if (panel) {
+    panel.classList.remove("priority-high", "priority-medium", "priority-low");
+    panel.classList.add(priorityRowClass(interaction.priority));
+  }
+
   renderAttachments(interaction);
 
   renderList(
@@ -628,8 +640,19 @@ function setupFilters() {
   const searchInput = document.getElementById("searchInput");
   const filterSelect = document.getElementById("filterSelect");
 
+  const syncFilterStyle = () => {
+    if (!filterSelect) return;
+    filterSelect.classList.toggle("filter-active", filterSelect.value !== "all");
+  };
+
   if (searchInput) searchInput.addEventListener("input", renderTable);
-  if (filterSelect) filterSelect.addEventListener("change", renderTable);
+  if (filterSelect) {
+    filterSelect.addEventListener("change", () => {
+      syncFilterStyle();
+      renderTable();
+    });
+    syncFilterStyle();
+  }
 }
 
 function setupReviewForm() {

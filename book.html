@@ -3,28 +3,57 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Missed Call Callback Request</title>
-  <link rel="stylesheet" href="styles.css?v=features-1" />
+  <title>CallbackFlow — Request a Callback</title>
+  <link rel="stylesheet" href="styles.css?v=brand-1" />
 </head>
 <body>
   <div class="container">
-    <div class="actions section-gap">
-      <a class="btn btn-secondary" href="index.html">Back to Dashboard</a>
-      <a class="btn btn-secondary" href="index.html#reviews">Leave a Review</a>
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">CF</div>
+        <div class="brand-copy">
+          <h1><span class="brand-name">CallbackFlow</span></h1>
+          <p>A secure place to tell us why you called and when we should call you back.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-secondary" href="index.html">Back to Dashboard</a>
+        <a class="btn btn-secondary" href="index.html#reviews">Leave a Review</a>
+      </div>
     </div>
 
     <section class="hero booking-hero">
       <div class="hero-grid">
         <div>
-          <h1>Tell us why you called</h1>
-          <p>
-            Sorry we missed your call. Send your name, reason for calling, and
-            any details the business should know before calling you back.
+          <h1>We are here to help</h1>
+          <p class="friendly-lead">
+            We missed your call, but we still want to help. Tell us what you need and when you would like us to call back.
           </p>
+
+          <div class="trust-panel">
+            <div class="trust-grid">
+              <div class="trust-item">
+                <small>Business</small>
+                <strong id="businessNameLabel">Demo Business</strong>
+              </div>
+              <div class="trust-item">
+                <small>Expected response</small>
+                <strong id="responseTimeLabel">Usually within 15 minutes during business hours</strong>
+              </div>
+              <div class="trust-item">
+                <small>Your privacy</small>
+                <strong>Your details stay with this business and are only used to return your call.</strong>
+              </div>
+            </div>
+            <p class="privacy-note">
+              We will not share your phone number or request details with third parties for marketing.
+            </p>
+          </div>
+
           <div class="pill-row">
             <span class="pill" id="timezonePill">Timezone: Detecting...</span>
             <span class="pill" id="hoursPill">Business hours: Mon-Fri, 8:00 AM-6:00 PM</span>
-            <span class="pill">Text link from missed call</span>
+            <span class="pill">Secure missed-call link</span>
           </div>
         </div>
 
@@ -34,7 +63,7 @@
           <p>2. Staff sees who called and why.</p>
           <p>3. Urgent requests are prioritized.</p>
           <p>4. You get a text confirmation.</p>
-          <p>5. The dashboard updates automatically.</p>
+          <p>5. Someone calls you back at your preferred time when possible.</p>
         </div>
       </div>
     </section>
@@ -44,8 +73,7 @@
         <div class="card-head">
           <h2>Choose a preferred callback time</h2>
           <p>
-            Pick a preferred window if you want. The request can still be sent
-            when you only provide your contact details and reason for calling.
+            Pick a preferred window if you want. You can still send the request with only your contact details and reason for calling.
           </p>
         </div>
 
@@ -85,8 +113,7 @@
           <div class="card-head">
             <h2>Your callback request</h2>
             <p>
-              This is the link a missed caller opens from the automatic text.
-              Submitting it alerts the business with the caller details.
+              Share a few details so the right person can help you faster.
             </p>
           </div>
 
@@ -220,6 +247,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/booking.js?v=features-1"></script>
+  <script type="module" src="js/booking.js?v=brand-1"></script>
 </body>
 </html>

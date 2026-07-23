@@ -91,7 +91,9 @@ const defaultInteractions = [
 ];
 
 const defaultSettings = {
+  businessName: "Demo Business",
   businessHoursLabel: "Mon-Fri, 8:00 AM - 6:00 PM",
+  responseTimeLabel: "Usually within 15 minutes during business hours",
   workingDays: [1, 2, 3, 4, 5],
   startHour: 8,
   endHour: 18,
