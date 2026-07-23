@@ -4,12 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Missed Call Callback Request</title>
-  <link rel="stylesheet" href="styles.css?v=text-qa-1" />
+  <link rel="stylesheet" href="styles.css?v=features-1" />
 </head>
 <body>
   <div class="container">
     <div class="actions section-gap">
       <a class="btn btn-secondary" href="index.html">Back to Dashboard</a>
+      <a class="btn btn-secondary" href="index.html#reviews">Leave a Review</a>
     </div>
 
     <section class="hero booking-hero">
@@ -127,6 +128,41 @@
                 <textarea id="details" placeholder="Add order numbers, preferred staff member, urgency, or anything else the business should know."></textarea>
               </div>
 
+              <label class="switch-row urgent-toggle" for="urgentToggle">
+                <div>
+                  <strong>Mark as urgent</strong>
+                  <div class="subtle">Prioritize this callback if you need help right away.</div>
+                </div>
+                <input id="urgentToggle" type="checkbox" />
+              </label>
+
+              <div class="attachment-grid">
+                <div class="notice">
+                  <div class="attachment-head">
+                    <div>
+                      <strong>Add a picture</strong>
+                      <div class="subtle" id="pictureStatus">Optional</div>
+                    </div>
+                    <button type="button" id="clearPictureBtn" class="btn btn-secondary">Clear</button>
+                  </div>
+                  <label class="file-btn" for="pictureInput">Choose picture</label>
+                  <input id="pictureInput" type="file" accept="image/*" hidden />
+                  <div id="picturePreview" class="attachment-preview"></div>
+                </div>
+
+                <div class="notice">
+                  <div class="attachment-head">
+                    <div>
+                      <strong>Add a voice memo</strong>
+                      <div class="subtle" id="voiceStatus">Optional</div>
+                    </div>
+                    <button type="button" id="clearVoiceBtn" class="btn btn-secondary">Clear</button>
+                  </div>
+                  <button type="button" id="recordVoiceBtn" class="btn btn-secondary full-width">Record voice memo</button>
+                  <div id="voicePreview" class="attachment-preview"></div>
+                </div>
+              </div>
+
               <div class="status-bar">
                 <div class="status-chip">
                   <small>Preferred date</small>
@@ -148,14 +184,24 @@
 
               <div class="cta-row">
                 <button type="submit" class="btn btn-primary">Send callback request</button>
-                <button type="button" id="rescheduleBtn" class="btn btn-secondary">Change time</button>
+                <button type="button" id="rescheduleBtn" class="btn btn-secondary">Reschedule</button>
                 <button type="button" id="cancelBtn" class="btn btn-danger">Cancel request</button>
               </div>
 
               <div class="tiny">
-                Demo flow uses the shared local store so the business dashboard reflects each request.
+                After you send a request, you can reschedule the preferred time or cancel it from this page.
               </div>
             </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Your previous requests</h2>
+            <p>If you have called before, staff can see this history when you request another callback.</p>
+          </div>
+          <div class="card-body">
+            <div id="customerHistoryFeed" class="summary-list"></div>
           </div>
         </div>
 
@@ -170,27 +216,10 @@
             <div id="dashboardFeed" class="summary-list"></div>
           </div>
         </div>
-
-        <div class="card">
-          <div class="card-head">
-            <h2>Production handoff</h2>
-            <p>Use these points to make the workflow production-ready.</p>
-          </div>
-          <div class="card-body">
-            <div class="summary-list">
-              <div class="summary-row"><span>Missed-call SMS</span><strong>Twilio webhook</strong></div>
-              <div class="summary-row"><span>Business alert</span><strong>SMS / email / dashboard</strong></div>
-              <div class="summary-row"><span>Dashboard updates</span><strong>WebSocket / SSE / polling</strong></div>
-              <div class="summary-row"><span>Timezone handling</span><strong>Intl API + server normalization</strong></div>
-              <div class="summary-row"><span>Secure caller link</span><strong>Signed token URL</strong></div>
-              <div class="summary-row"><span>CRM handoff</span><strong>Webhook / Zapier / API</strong></div>
-            </div>
-          </div>
-        </div>
       </section>
     </div>
   </div>
 
-  <script type="module" src="js/booking.js?v=text-qa-1"></script>
+  <script type="module" src="js/booking.js?v=features-1"></script>
 </body>
 </html>

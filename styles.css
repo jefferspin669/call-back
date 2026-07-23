@@ -669,6 +669,7 @@ tbody tr:last-child td {
 .swatch-violet { background: #6941c6; }
 .swatch-amber { background: var(--amber); }
 .swatch-rose { background: var(--rose); }
+.swatch-teal { background: var(--teal); }
 
 .portal-steps {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1132,6 +1133,70 @@ ul.clean {
   line-height: 1.5;
 }
 
+.urgent-toggle {
+  margin: 4px 0 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--amber-soft);
+  align-items: center;
+}
+
+.urgent-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--rose);
+}
+
+.attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+
+.attachment-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.attachment-preview {
+  margin-top: 10px;
+}
+
+.attachment-preview img,
+.drawer-media {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.attachment-preview audio,
+.drawer-audio {
+  width: 100%;
+  margin-top: 4px;
+}
+
 @media (max-width: 1100px) {
   .grid-4,
   .chart-grid {
@@ -1212,7 +1277,8 @@ ul.clean {
 @media (max-width: 720px) {
   .row-2,
   .slot-grid,
-  .status-bar {
+  .status-bar,
+  .attachment-grid {
     grid-template-columns: 1fr;
   }
 

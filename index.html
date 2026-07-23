@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Missed Call Callback System</title>
-  <link rel="stylesheet" href="styles.css?v=text-qa-1" />
+  <link rel="stylesheet" href="styles.css?v=features-1" />
 </head>
 <body>
   <div class="container">
@@ -15,12 +15,14 @@
       </div>
       <div class="actions">
         <a class="btn btn-secondary" href="book.html">Open Client Page</a>
-        <button class="btn btn-primary" type="button">Admin Settings</button>
+        <button class="btn btn-primary tab-jump" data-tab="admin" type="button">Admin Settings</button>
       </div>
     </div>
 
     <div class="tabs">
       <button class="tab active" data-tab="dashboard" type="button">Staff Dashboard</button>
+      <button class="tab" data-tab="analytics" type="button">Analytics</button>
+      <button class="tab" data-tab="reviews" type="button">Reviews</button>
       <button class="tab" data-tab="admin" type="button">Owner/Admin</button>
       <button class="tab" data-tab="client" type="button">Client Portal</button>
       <button class="tab" data-tab="demo" type="button">Workflow Demo</button>
@@ -32,8 +34,8 @@
           <div class="metric-top">
             <div>
               <div class="metric-label">Missed Calls Today</div>
-              <div class="metric-value">22</div>
-              <div class="metric-hint">+18% from yesterday</div>
+              <div class="metric-value" id="metricMissedToday">0</div>
+              <div class="metric-hint" id="metricMissedHint">Waiting for live data</div>
             </div>
             <div class="icon-box" aria-hidden="true"></div>
           </div>
@@ -43,8 +45,8 @@
           <div class="metric-top">
             <div>
               <div class="metric-label">Pending Callbacks</div>
-              <div class="metric-value">11</div>
-              <div class="metric-hint">4 urgent follow-ups</div>
+              <div class="metric-value" id="metricPending">0</div>
+              <div class="metric-hint" id="metricPendingHint">0 urgent follow-ups</div>
             </div>
             <div class="icon-box" aria-hidden="true"></div>
           </div>
@@ -53,9 +55,9 @@
         <div class="card metric">
           <div class="metric-top">
             <div>
-              <div class="metric-label">Avg. Response Time</div>
-              <div class="metric-value">5.8m</div>
-              <div class="metric-hint">Within target SLA</div>
+              <div class="metric-label">Avg. Review Score</div>
+              <div class="metric-value" id="metricAvgRating">-</div>
+              <div class="metric-hint" id="metricReviewsHint">No reviews yet</div>
             </div>
             <div class="icon-box" aria-hidden="true"></div>
           </div>
@@ -64,9 +66,9 @@
         <div class="card metric">
           <div class="metric-top">
             <div>
-              <div class="metric-label">Completed Today</div>
-              <div class="metric-value">17</div>
-              <div class="metric-hint">3 no-shows</div>
+              <div class="metric-label">Completed</div>
+              <div class="metric-value" id="metricCompleted">0</div>
+              <div class="metric-hint" id="metricCompletedHint">0 cancelled</div>
             </div>
             <div class="icon-box" aria-hidden="true"></div>
           </div>
@@ -87,6 +89,7 @@
                 <select id="filterSelect">
                   <option value="all">All</option>
                   <option value="high">High Priority</option>
+                  <option value="urgent">Urgent</option>
                   <option value="medium">Medium Priority</option>
                   <option value="low">Low Priority</option>
                   <option value="awaiting">Awaiting Response</option>
@@ -94,6 +97,7 @@
                   <option value="progress">In Progress</option>
                   <option value="escalated">Escalated</option>
                   <option value="cancelled">Cancelled</option>
+                  <option value="repeat">Repeat Callers</option>
                 </select>
               </div>
             </div>
@@ -134,21 +138,11 @@
 
           <div class="card">
             <div class="card-head">
-              <h3>Escalation Watch</h3>
+              <h3>Customer History Snapshot</h3>
+              <p>Previous requests for the selected caller.</p>
             </div>
-            <div class="card-body">
-              <div class="progress-group">
-                <div class="progress-head"><span>Unaddressed high priority</span><strong>66%</strong></div>
-                <div class="progress"><span style="width:66%"></span></div>
-              </div>
-              <div class="progress-group">
-                <div class="progress-head"><span>Same-day callback completion</span><strong>79%</strong></div>
-                <div class="progress"><span style="width:79%"></span></div>
-              </div>
-              <div class="progress-group">
-                <div class="progress-head"><span>Voicemails transcribed</span><strong>92%</strong></div>
-                <div class="progress"><span style="width:92%"></span></div>
-              </div>
+            <div class="card-body" id="dashboardHistoryPreview">
+              <div class="subtle">Select a caller to view history.</div>
             </div>
           </div>
 
@@ -162,6 +156,129 @@
                 <div class="subtle">Start the callback API to show business alerts.</div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="analytics" class="view">
+      <div class="grid-4">
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">Total Requests</div>
+              <div class="metric-value" id="analyticsTotal">0</div>
+              <div class="metric-hint">All callback requests</div>
+            </div>
+          </div>
+        </div>
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">Urgent Queue</div>
+              <div class="metric-value" id="analyticsUrgent">0</div>
+              <div class="metric-hint">High priority / urgent</div>
+            </div>
+          </div>
+        </div>
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">With Attachments</div>
+              <div class="metric-value" id="analyticsAttachments">0</div>
+              <div class="metric-hint" id="analyticsAttachmentsHint">0 pictures · 0 voice memos</div>
+            </div>
+          </div>
+        </div>
+        <div class="card metric">
+          <div class="metric-top">
+            <div>
+              <div class="metric-label">Repeat Callers</div>
+              <div class="metric-value" id="analyticsRepeat">0</div>
+              <div class="metric-hint">Customers with prior history</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-head">
+          <h2>Analytics Overview</h2>
+          <p>Track missed calls, callback completion, urgency, attachments, and queue health.</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-grid">
+            <div class="chart-card">
+              <div class="chart-title">Missed Calls vs Callbacks</div>
+              <div class="bars" id="missedChart"></div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-title">Status Mix</div>
+              <div class="pie-legend" id="statusMixChart"></div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-title">Priority Mix</div>
+              <div class="pie-legend" id="priorityMixChart"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="reviews" class="view">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Customer Reviews</h2>
+            <p>Collect feedback after a callback so the business can improve response quality.</p>
+          </div>
+          <div class="card-body">
+            <form id="reviewForm" class="booking-form">
+              <div class="row-2">
+                <div>
+                  <label for="reviewName">Your name</label>
+                  <input id="reviewName" type="text" placeholder="Jane Smith" required />
+                </div>
+                <div>
+                  <label for="reviewPhone">Phone (optional)</label>
+                  <input id="reviewPhone" type="tel" placeholder="(555) 123-4567" />
+                </div>
+              </div>
+
+              <div>
+                <label for="reviewRating">Rating</label>
+                <select id="reviewRating" required>
+                  <option value="5">5 - Excellent</option>
+                  <option value="4">4 - Good</option>
+                  <option value="3">3 - Okay</option>
+                  <option value="2">2 - Poor</option>
+                  <option value="1">1 - Very poor</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="reviewComment">How was your callback experience?</label>
+                <textarea id="reviewComment" placeholder="Tell us what went well or what we can improve." required></textarea>
+              </div>
+
+              <div id="reviewMessage" class="message"></div>
+
+              <div class="cta-row">
+                <button type="submit" class="btn btn-primary">Submit review</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Recent Reviews</h2>
+            <p id="reviewsSummary">No reviews yet.</p>
+          </div>
+          <div class="card-body">
+            <div id="reviewsFeed" class="summary-list"></div>
           </div>
         </div>
       </div>
@@ -265,36 +382,6 @@
           </div>
         </div>
       </div>
-
-      <div class="card section-gap">
-        <div class="card-head">
-          <h2>Analytics Overview</h2>
-          <p>Track missed calls, callback completion, response time, and queue health.</p>
-        </div>
-        <div class="card-body">
-          <div class="chart-grid">
-            <div class="chart-card">
-              <div class="chart-title">Missed Calls vs Callbacks</div>
-              <div class="bars" id="missedChart"></div>
-            </div>
-
-            <div class="chart-card">
-              <div class="chart-title">Average Response Time</div>
-              <div class="line-chart" id="responseChart"></div>
-            </div>
-
-            <div class="chart-card">
-              <div class="chart-title">Interaction Status Mix</div>
-              <div class="pie-legend">
-                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-blue"></span>Completed</div><strong>42%</strong></div>
-                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-violet"></span>Scheduled</div><strong>26%</strong></div>
-                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-amber"></span>Awaiting</div><strong>18%</strong></div>
-                <div class="pie-item"><div class="pie-left"><span class="swatch swatch-rose"></span>Escalated</div><strong>14%</strong></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </section>
 
     <section id="client" class="view">
@@ -315,6 +402,7 @@
               <a class="btn btn-primary action-card" href="book.html">Request Callback</a>
               <button class="btn btn-secondary action-card" onclick="goClientStep(2, 'progress')" type="button">Choose Appointment</button>
               <button class="btn btn-soft action-card" onclick="goClientStep(2, 'progress')" type="button">Leave Details</button>
+              <a class="btn btn-soft action-card" href="#reviews" data-tab="reviews">Leave a Review</a>
             </div>
           </div>
 
@@ -326,7 +414,7 @@
                   <div><label>Preferred Date</label><input type="date" /></div>
                   <div><label>Preferred Time</label><input type="time" /></div>
                   <div><label>Notes</label><textarea placeholder="Tell us what you need help with..."></textarea></div>
-                  <div><label>Upload document (optional)</label><button class="btn btn-secondary full-width" type="button">Attach File</button></div>
+                  <div><label>Upload picture (optional)</label><input type="file" accept="image/*" /></div>
                   <button class="btn btn-primary" onclick="goClientStep(3, 'completed')" type="button">Submit Request</button>
                 </div>
               </div>
@@ -337,7 +425,7 @@
                   <li>Your request is logged instantly.</li>
                   <li>Staff receives the caller details in the dashboard.</li>
                   <li>Urgent cases can be escalated automatically.</li>
-                  <li>You receive SMS and email reminders plus status updates.</li>
+                  <li>You receive SMS reminders plus status updates.</li>
                 </ul>
               </div>
             </div>
@@ -410,8 +498,45 @@
 
       <div class="drawer-body">
         <div class="drawer-section">
+          <h3>Quick actions</h3>
+          <div class="cta-row">
+            <button id="markUrgentBtn" class="btn btn-secondary" type="button">Mark urgent</button>
+            <button id="completeRequestBtn" class="btn btn-primary" type="button">Mark completed</button>
+            <button id="cancelRequestBtn" class="btn btn-danger" type="button">Cancel request</button>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <h3>Attachments</h3>
+          <div id="drawerAttachments" class="stack"></div>
+        </div>
+
+        <div class="drawer-section">
+          <h3>Customer history</h3>
+          <div id="drawerCustomerHistory" class="stack"></div>
+        </div>
+
+        <div class="drawer-section">
           <h3>Callback history</h3>
           <div id="drawerHistory" class="stack"></div>
+        </div>
+
+        <div class="drawer-section">
+          <h3>Staff notes</h3>
+          <form id="staffNoteForm" class="stack">
+            <div class="row-2">
+              <div>
+                <label for="staffNoteAuthor">Your name</label>
+                <input id="staffNoteAuthor" type="text" placeholder="Maya" value="Staff" />
+              </div>
+            </div>
+            <div>
+              <label for="staffNoteText">Add a note for the next call</label>
+              <textarea id="staffNoteText" placeholder="Example: Customer prefers afternoon calls. Mention invoice #4421." required></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Save staff note</button>
+          </form>
+          <div id="drawerStaffNotes" class="stack field-gap"></div>
         </div>
 
         <div class="drawer-section">
@@ -432,6 +557,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=text-qa-1"></script>
+  <script type="module" src="app.js?v=features-1"></script>
 </body>
 </html>

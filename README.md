@@ -6,20 +6,22 @@ This project has a professional client request page, staff dashboard, and a loca
 
 Start the static site:
 
-```powershell
-python -m http.server 4174 --bind 127.0.0.1
+```bash
+python3 -m http.server 4174 --bind 127.0.0.1
 ```
 
 Start the callback API:
 
-```powershell
-C:\Users\PC\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe server.js
+```bash
+node server.js
 ```
 
 Open:
 
 - Client request page: `http://127.0.0.1:4174/book.html`
 - Staff dashboard: `http://127.0.0.1:4174/index.html`
+- Analytics tab: `http://127.0.0.1:4174/index.html#analytics`
+- Reviews tab: `http://127.0.0.1:4174/index.html#reviews`
 - API health check: `http://127.0.0.1:8787/health`
 - SMS outbox: `http://127.0.0.1:8787/api/outbox`
 - Business alerts: `http://127.0.0.1:8787/api/notifications`
@@ -29,24 +31,34 @@ Open:
 1. Phone provider posts a missed call to `POST /api/missed-call`.
 2. The API creates a secure request token and callback link.
 3. The API returns the SMS text that would be sent to the caller.
-4. Caller opens the link and submits name, phone, reason, and details.
-5. The API records the callback request and business notification.
-6. The API records simulated SMS outbox entries for the caller and business.
-7. The dashboard syncs API interactions and business alerts into the staff queue.
+4. Caller opens the link and submits name, phone, reason, optional picture/voice memo, urgency, and preferred time.
+5. The API records the callback request, customer history, and business notification.
+6. Staff can open the request, leave notes, mark urgent, cancel, complete, and review analytics.
+7. Customers can leave a review from the Reviews tab.
+
+## Client request features
+
+- Optional picture attachment
+- Optional voice memo recording
+- Mark request as urgent
+- Reschedule preferred callback time
+- Cancel request
+- Previous-request history by phone number
+
+## Staff features
+
+- Interaction queue with urgent / repeat-caller filters
+- Caller detail drawer with attachments, history, and AI triage
+- Staff notes that stay with the customer record
+- Analytics page with queue and attachment metrics
+- Reviews page for customer feedback
 
 ## Simulate a missed call
 
-```powershell
-$body = @{
-  callerPhone = "(555) 777-0199"
-  businessPhone = "(555) 010-9000"
-  businessName = "Demo Business"
-} | ConvertTo-Json
-
-Invoke-RestMethod -Method Post `
-  -Uri http://127.0.0.1:8787/api/missed-call `
-  -ContentType "application/json" `
-  -Body $body
+```bash
+curl -X POST http://127.0.0.1:8787/api/missed-call \
+  -H "Content-Type: application/json" \
+  -d '{"callerPhone":"(555) 777-0199","businessPhone":"(555) 010-9000","businessName":"Demo Business"}'
 ```
 
 Use the returned `callbackUrl` as the text-message link.
