@@ -1,6 +1,7 @@
 import { callbackApi } from "./js/api-client.js";
 import { store } from "./js/shared-store.js";
 import { getAiTriage } from "./js/ai-triage.js";
+import { auth } from "./js/auth.js";
 
 let activeInteractionId = null;
 let latestAnalytics = null;
@@ -61,6 +62,58 @@ function setMessage(id, text, type = "success") {
   el.textContent = text;
 }
 
+function updateAuthUI() {
+  const loggedIn = auth.isLoggedIn();
+  const account = auth.getAccount();
+  const lock = document.getElementById("adminLock");
+  const panel = document.getElementById("adminPanel");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const logoutBtnTop = document.getElementById("logoutBtnTop");
+  const sidebarStatus = document.getElementById("authSidebarStatus");
+  const accountLabel = document.getElementById("adminAccountLabel");
+
+  if (lock) lock.hidden = loggedIn;
+  if (panel) panel.hidden = !loggedIn;
+  if (logoutBtn) logoutBtn.hidden = !loggedIn;
+  if (logoutBtnTop) logoutBtnTop.hidden = !loggedIn;
+
+  if (sidebarStatus) {
+    sidebarStatus.textContent = loggedIn
+      ? `Signed in: ${account?.businessName || account?.email || "Admin"}`
+      : "Admin locked";
+  }
+  if (accountLabel) {
+    accountLabel.textContent = loggedIn
+      ? `Signed in as ${account?.ownerName || "Owner"} · ${account?.businessName || ""}`
+      : "Signed in";
+  }
+}
+
+async function refreshAuthStatus() {
+  updateAuthUI();
+  try {
+    if (!(await callbackApi.isAvailable())) return;
+    const status = await callbackApi.getAuthStatus();
+    const hint = document.getElementById("adminLockHint");
+    if (hint) {
+      hint.textContent = status.hasAccounts
+        ? "Sign in with your business email and password to unlock Admin."
+        : "New here? Create a business account first, then come back to sign in.";
+    }
+    if (auth.isLoggedIn()) {
+      try {
+        const me = await callbackApi.me();
+        auth.saveSession({ token: auth.getToken(), account: me.account });
+      } catch {
+        auth.clearSession();
+      }
+    }
+  } catch (error) {
+    console.warn("Auth status unavailable", error);
+  }
+  updateAuthUI();
+}
+
 function activateTab(tabName) {
   const target = document.getElementById(tabName);
   if (!target) return;
@@ -75,8 +128,11 @@ function activateTab(tabName) {
   if (tabName === "analytics") renderAnalytics();
   if (tabName === "reviews") renderReviews();
   if (tabName === "admin") {
-    loadSettingsForm();
-    renderStaffList();
+    updateAuthUI();
+    if (auth.isLoggedIn()) {
+      loadSettingsForm();
+      renderStaffList();
+    }
   }
 
   const hash = tabName === "dashboard" ? "#" : `#${tabName}`;
@@ -504,20 +560,26 @@ function updateMessagePreview(settings = collectSettingsFromForm()) {
 
 async function saveSettings(event) {
   event.preventDefault();
+  if (!auth.isLoggedIn()) {
+    setMessage("settingsMessage", "Sign in to save admin settings.", "error");
+    updateAuthUI();
+    return;
+  }
   const settings = collectSettingsFromForm();
   try {
-    if (await callbackApi.isAvailable()) {
-      const result = await callbackApi.saveSettings(settings);
-      store.saveSettings(result.settings || settings);
-    } else {
-      store.saveSettings(settings);
+    if (!(await callbackApi.isAvailable())) {
+      setMessage("settingsMessage", "Server is required to save locked admin settings. Run node server.js", "error");
+      return;
     }
+    const result = await callbackApi.saveSettings(settings);
+    store.saveSettings(result.settings || settings);
     loadSettingsForm(settings);
     setMessage("settingsMessage", "Settings saved. Customer form and alerts will use these values.", "success");
     showStatus("Admin settings saved.");
   } catch (error) {
     console.error(error);
-    setMessage("settingsMessage", "Could not save settings.", "error");
+    setMessage("settingsMessage", error.message || "Could not save settings.", "error");
+    updateAuthUI();
   }
 }
 
@@ -556,6 +618,11 @@ function renderStaffList(staff = store.getStaff()) {
 
 async function saveStaffMember(event) {
   event.preventDefault();
+  if (!auth.isLoggedIn()) {
+    setMessage("staffMessage", "Sign in to manage staff.", "error");
+    updateAuthUI();
+    return;
+  }
   const payload = {
     id: editingStaffId || undefined,
     name: document.getElementById("staffName")?.value.trim() || "",
@@ -568,20 +635,20 @@ async function saveStaffMember(event) {
   }
 
   try {
-    if (await callbackApi.isAvailable()) {
-      const result = await callbackApi.saveStaff(payload);
-      store.saveStaff(result.staff || [], { silent: true });
-      renderStaffList(result.staff || []);
-    } else {
-      store.upsertStaff(payload);
-      renderStaffList();
+    if (!(await callbackApi.isAvailable())) {
+      setMessage("staffMessage", "Server is required to manage locked staff settings.", "error");
+      return;
     }
+    const result = await callbackApi.saveStaff(payload);
+    store.saveStaff(result.staff || [], { silent: true });
+    renderStaffList(result.staff || []);
     resetStaffForm();
     setMessage("staffMessage", "Staff member saved.", "success");
     showStatus("Staff list updated.");
   } catch (error) {
     console.error(error);
-    setMessage("staffMessage", "Could not save staff member.", "error");
+    setMessage("staffMessage", error.message || "Could not save staff member.", "error");
+    updateAuthUI();
   }
 }
 
@@ -598,22 +665,55 @@ async function editStaff(id) {
 }
 
 async function deleteStaff(id) {
+  if (!auth.isLoggedIn()) {
+    showStatus("Sign in to manage staff.", "error");
+    updateAuthUI();
+    return;
+  }
   if (!window.confirm("Remove this staff member?")) return;
   try {
-    if (await callbackApi.isAvailable()) {
-      const result = await callbackApi.deleteStaff(id);
-      store.saveStaff(result.staff || [], { silent: true });
-      renderStaffList(result.staff || []);
-    } else {
-      store.removeStaff(id);
-      renderStaffList();
+    if (!(await callbackApi.isAvailable())) {
+      showStatus("Server is required to manage locked staff settings.", "error");
+      return;
     }
+    const result = await callbackApi.deleteStaff(id);
+    store.saveStaff(result.staff || [], { silent: true });
+    renderStaffList(result.staff || []);
     if (editingStaffId === id) resetStaffForm();
     showStatus("Staff member removed.");
   } catch (error) {
     console.error(error);
-    showStatus("Could not remove staff member.", "error");
+    showStatus(error.message || "Could not remove staff member.", "error");
+    updateAuthUI();
   }
+}
+
+async function handleAdminLogin(event) {
+  event.preventDefault();
+  const email = document.getElementById("adminEmail")?.value.trim() || "";
+  const password = document.getElementById("adminPassword")?.value || "";
+  try {
+    if (!(await callbackApi.isAvailable())) {
+      setMessage("adminLoginMessage", "Server is not running. Start it with: node server.js", "error");
+      return;
+    }
+    const result = await callbackApi.login({ email, password });
+    setMessage("adminLoginMessage", `Welcome back, ${result.account.businessName}.`, "success");
+    document.getElementById("adminPassword").value = "";
+    updateAuthUI();
+    loadSettingsForm();
+    renderStaffList();
+    showStatus("Admin unlocked.");
+  } catch (error) {
+    setMessage("adminLoginMessage", error.message || "Login failed.", "error");
+  }
+}
+
+async function handleLogout() {
+  await callbackApi.logout();
+  updateAuthUI();
+  showStatus("Logged out. Admin is locked.");
+  activateTab("admin");
 }
 
 async function simulateMissedCall() {
@@ -717,7 +817,12 @@ function setupEventHandlers() {
       const action = actionBtn.dataset.action;
       if (action === "simulate-missed-call") return simulateMissedCall();
       if (action === "refresh-data") return syncBackend().then(() => showStatus("Data refreshed."));
+      if (action === "logout") return handleLogout();
       if (action === "preview-message") {
+        if (!auth.isLoggedIn()) {
+          setMessage("adminLoginMessage", "Sign in to preview and edit admin settings.", "error");
+          return;
+        }
         updateMessagePreview();
         setMessage("settingsMessage", "Message preview updated below.", "success");
         return;
@@ -759,6 +864,8 @@ function setupEventHandlers() {
 
   document.getElementById("settingsForm")?.addEventListener("submit", saveSettings);
   document.getElementById("staffForm")?.addEventListener("submit", saveStaffMember);
+  document.getElementById("adminLoginForm")?.addEventListener("submit", handleAdminLogin);
+  window.addEventListener("cf:auth-changed", updateAuthUI);
 
   document.getElementById("staffNoteForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -833,9 +940,9 @@ function bootApp() {
   renderAnalytics(store.getAnalytics());
   renderBusinessAlerts();
   renderReviews();
-  loadSettingsForm();
-  renderStaffList();
   resetStaffForm();
+  updateAuthUI();
+  refreshAuthStatus();
 
   const hash = (window.location.hash || "").replace("#", "") || "dashboard";
   activateTab(hash);

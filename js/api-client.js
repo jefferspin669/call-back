@@ -1,9 +1,10 @@
+import { auth } from "./auth.js";
+
 function resolveApiBase() {
   if (typeof window === "undefined") return "http://127.0.0.1:4174";
   if (window.CALLBACK_API_BASE) return window.CALLBACK_API_BASE;
 
   const { protocol, hostname, port } = window.location;
-  // Same-origin when served by CallbackFlow server
   if (port === "4174" || port === "8787" || port === "") return "";
   return `${protocol}//${hostname}:4174`;
 }
@@ -11,23 +12,34 @@ function resolveApiBase() {
 const API_BASE_URL = resolveApiBase();
 
 async function request(path, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
+
+  const token = auth.getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
+    headers
   });
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401) {
+      // Stale session
+      if (path !== "/api/auth/login" && path !== "/api/auth/me") {
+        auth.clearSession();
+      }
+    }
     throw new Error(data.error || `API request failed with ${response.status}`);
   }
   return data;
 }
 
 export const callbackApi = {
-  baseUrl: API_BASE_URL || window.location.origin,
+  baseUrl: API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:4174"),
 
   async isAvailable() {
     try {
@@ -40,6 +52,43 @@ export const callbackApi = {
 
   getRequestToken() {
     return new URLSearchParams(window.location.search).get("request");
+  },
+
+  async getAuthStatus() {
+    return request("/api/auth/status");
+  },
+
+  async signup(payload) {
+    const result = await request("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    auth.saveSession(result);
+    return result;
+  },
+
+  async login(payload) {
+    const result = await request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    auth.saveSession(result);
+    return result;
+  },
+
+  async logout() {
+    try {
+      if (auth.getToken()) {
+        await request("/api/auth/logout", { method: "POST", body: "{}" });
+      }
+    } catch {
+      // ignore network errors on logout
+    }
+    auth.clearSession();
+  },
+
+  async me() {
+    return request("/api/auth/me");
   },
 
   async getMissedCall(token) {

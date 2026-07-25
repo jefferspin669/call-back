@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CallbackFlow</title>
-  <link rel="stylesheet" href="styles.css?v=v2" />
+  <link rel="stylesheet" href="styles.css?v=auth-1" />
 </head>
 <body>
   <div id="bootBanner" class="boot-banner">Starting CallbackFlow…</div>
@@ -27,8 +27,11 @@
       </nav>
 
       <div class="sidebar-actions">
+        <div id="authSidebarStatus" class="auth-sidebar-status subtle">Admin locked</div>
+        <a class="btn btn-secondary" href="signup.html">Create business account</a>
         <a class="btn btn-secondary" href="book.html">Customer form</a>
         <button class="btn btn-primary" type="button" data-action="simulate-missed-call">Simulate missed call</button>
+        <button class="btn btn-secondary" type="button" data-action="logout" id="logoutBtn" hidden>Log out</button>
       </div>
     </aside>
 
@@ -256,14 +259,47 @@
         <div class="topbar">
           <div class="page-title">
             <h2>Admin</h2>
-            <p>Update business settings and staff. Changes apply to the customer form.</p>
+            <p>Protected area. Sign in with your business account to change settings.</p>
+          </div>
+          <div class="actions">
+            <a class="btn btn-secondary" href="signup.html">Create business account</a>
+            <button class="btn btn-secondary" type="button" data-action="logout" id="logoutBtnTop" hidden>Log out</button>
           </div>
         </div>
 
+        <div id="adminLock" class="card auth-lock">
+          <div class="card-head">
+            <h2>Admin is locked</h2>
+            <p>Only your business account can edit settings and staff.</p>
+          </div>
+          <div class="card-body">
+            <form id="adminLoginForm" class="booking-form">
+              <div>
+                <label for="adminEmail">Work email</label>
+                <input id="adminEmail" type="email" placeholder="you@business.com" required />
+              </div>
+              <div>
+                <label for="adminPassword">Password</label>
+                <input id="adminPassword" type="password" minlength="8" required />
+              </div>
+              <div id="adminLoginMessage" class="message"></div>
+              <div class="actions">
+                <button class="btn btn-primary" type="submit">Unlock admin</button>
+                <a class="btn btn-secondary" href="signup.html">Create business account</a>
+              </div>
+              <div class="tiny" id="adminLockHint">
+                New here? Create a business account first, then come back to sign in.
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="adminPanel" class="admin-panel" hidden>
         <div class="grid-2">
           <div class="card">
             <div class="card-head">
               <h2>Business settings</h2>
+              <p id="adminAccountLabel">Signed in</p>
             </div>
             <div class="card-body">
               <form id="settingsForm" class="booking-form">
@@ -373,6 +409,7 @@
             </div>
           </div>
         </div>
+        </div>
       </section>
     </main>
   </div>
@@ -441,7 +478,7 @@
   <script type="module">
     const banner = document.getElementById("bootBanner");
     try {
-      await import("./app.js?v=v2");
+      await import("./app.js?v=auth-1");
       banner.textContent = "CallbackFlow ready";
       banner.classList.add("ok");
       setTimeout(() => banner.remove(), 1200);

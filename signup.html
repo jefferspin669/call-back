@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CallbackFlow — Create business account</title>
+  <link rel="stylesheet" href="styles.css?v=auth-1" />
+</head>
+<body class="booking-page">
+  <div class="container auth-page">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">CF</div>
+        <div class="brand-copy">
+          <h1><span class="brand-name">CallbackFlow</span></h1>
+          <p>Create an account for your business to lock Admin settings.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-secondary" href="index.html">Staff home</a>
+        <a class="btn btn-primary" href="index.html#admin">Admin login</a>
+      </div>
+    </div>
+
+    <section class="hero booking-hero auth-hero">
+      <div class="hero-grid">
+        <div>
+          <h1>Set up your business account</h1>
+          <p class="friendly-lead">
+            Register your business so only you can change Admin settings, staff roles, and response rules.
+          </p>
+          <div class="trust-panel">
+            <div class="trust-grid">
+              <div class="trust-item">
+                <small>Protected admin</small>
+                <strong>Settings stay locked until you sign in.</strong>
+              </div>
+              <div class="trust-item">
+                <small>Your workspace</small>
+                <strong>Business name appears on the customer callback form.</strong>
+              </div>
+              <div class="trust-item">
+                <small>Fast start</small>
+                <strong>Create an account in under a minute.</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card auth-card">
+          <div class="card-head">
+            <h2>Create account</h2>
+            <p>Use a password you can remember. Minimum 8 characters.</p>
+          </div>
+          <div class="card-body">
+            <form id="signupForm" class="booking-form">
+              <div>
+                <label for="businessName">Business name</label>
+                <input id="businessName" type="text" placeholder="Harbor Clinic" required />
+              </div>
+              <div class="row-2">
+                <div>
+                  <label for="ownerName">Your name</label>
+                  <input id="ownerName" type="text" placeholder="Alex Morgan" required />
+                </div>
+                <div>
+                  <label for="phone">Business phone</label>
+                  <input id="phone" type="tel" placeholder="(555) 010-9000" />
+                </div>
+              </div>
+              <div>
+                <label for="email">Work email</label>
+                <input id="email" type="email" placeholder="you@business.com" required />
+              </div>
+              <div class="row-2">
+                <div>
+                  <label for="password">Password</label>
+                  <input id="password" type="password" minlength="8" required />
+                </div>
+                <div>
+                  <label for="confirmPassword">Confirm password</label>
+                  <input id="confirmPassword" type="password" minlength="8" required />
+                </div>
+              </div>
+              <div id="signupMessage" class="message"></div>
+              <button class="btn btn-primary full-width" type="submit">Create business account</button>
+              <div class="tiny">
+                Already have an account?
+                <a href="index.html#admin">Sign in on the Admin page</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { callbackApi } from "./js/api-client.js";
+
+    const form = document.getElementById("signupForm");
+    const message = document.getElementById("signupMessage");
+
+    function setMessage(text, type = "success") {
+      message.className = `message ${type}`;
+      message.textContent = text;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = {
+        businessName: document.getElementById("businessName").value.trim(),
+        ownerName: document.getElementById("ownerName").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        password: document.getElementById("password").value
+      };
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
+      if (payload.password !== confirmPassword) {
+        setMessage("Passwords do not match.", "error");
+        return;
+      }
+
+      try {
+        if (!(await callbackApi.isAvailable())) {
+          setMessage("Server is not running. Start it with: node server.js", "error");
+          return;
+        }
+        const result = await callbackApi.signup(payload);
+        setMessage(`Welcome, ${result.account.businessName}. Redirecting to Admin…`, "success");
+        window.setTimeout(() => {
+          window.location.href = "index.html#admin";
+        }, 700);
+      } catch (error) {
+        setMessage(error.message || "Could not create account.", "error");
+      }
+    });
+  </script>
+</body>
+</html>

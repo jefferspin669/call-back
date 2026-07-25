@@ -748,6 +748,34 @@ th {
 .boot-banner.ok { background: var(--accent); }
 .boot-banner.error { background: var(--priority-high); }
 
+.auth-sidebar-status {
+  color: rgba(255,255,255,0.82) !important;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0 4px 4px;
+}
+
+.auth-lock,
+.auth-card {
+  max-width: 560px;
+}
+
+.auth-page .auth-hero {
+  margin-top: 8px;
+}
+
+.admin-panel[hidden],
+#adminLock[hidden],
+#logoutBtn[hidden],
+#logoutBtnTop[hidden] {
+  display: none !important;
+}
+
+.admin-panel {
+  display: grid;
+  gap: 18px;
+}
+
 @media (max-width: 1100px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar {
