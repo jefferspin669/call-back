@@ -3,14 +3,35 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-const PORT = Number(process.env.PORT || 8787);
+const PORT = Number(process.env.PORT || 4174);
 const HOST = process.env.HOST || "127.0.0.1";
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "http://127.0.0.1:4174";
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || `http://${HOST}:${PORT}`;
 const BUSINESS_NAME = process.env.BUSINESS_NAME || "Demo Business";
 const BUSINESS_ALERT_PHONE = process.env.BUSINESS_ALERT_PHONE || "(555) 010-9000";
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "callback-store.json");
+const ROOT_DIR = __dirname;
 const MAX_BODY_BYTES = 12_000_000;
+
+const defaultSettings = {
+  businessName: BUSINESS_NAME,
+  businessHoursLabel: "Mon-Fri, 8:00 AM - 6:00 PM",
+  responseTimeLabel: "Usually within 15 minutes during business hours",
+  autoResponseTemplate: "Sorry we missed your call. Tap your secure link to tell us why you called and request a callback.",
+  escalationAlerts: true,
+  staffAccessControls: true,
+  dailySummaryEmails: true,
+  workingDays: [1, 2, 3, 4, 5],
+  startHour: 8,
+  endHour: 18,
+  bufferMinutes: 15
+};
+
+const defaultStaff = [
+  { id: "STAFF-1", name: "Maya Reynolds", role: "Manager", status: "Active" },
+  { id: "STAFF-2", name: "Noah Green", role: "Staff", status: "Active" },
+  { id: "STAFF-3", name: "Alex Chen", role: "Staff", status: "On Call" }
+];
 
 const initialData = {
   missedCalls: [],
@@ -18,7 +39,24 @@ const initialData = {
   businessNotifications: [],
   smsOutbox: [],
   reviews: [],
-  staffNotes: []
+  staffNotes: [],
+  settings: defaultSettings,
+  staff: defaultStaff
+};
+
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".md": "text/markdown; charset=utf-8",
+  ".webm": "audio/webm",
+  ".wav": "audio/wav"
 };
 
 function ensureStore() {
@@ -56,6 +94,35 @@ function sendJson(res, status, data) {
 
 function notFound(res) {
   sendJson(res, 404, { error: "Not found" });
+}
+
+function sendFile(res, filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const type = MIME_TYPES[ext] || "application/octet-stream";
+  const body = fs.readFileSync(filePath);
+  res.writeHead(200, {
+    "Content-Type": type,
+    "Cache-Control": "no-cache",
+    "Content-Length": body.length
+  });
+  res.end(body);
+}
+
+function safeStaticPath(urlPath) {
+  const clean = decodeURIComponent(urlPath.split("?")[0]);
+  const relative = clean === "/" ? "/index.html" : clean;
+  const resolved = path.normalize(path.join(ROOT_DIR, relative));
+  if (!resolved.startsWith(ROOT_DIR)) return null;
+  if (!fs.existsSync(resolved) || fs.statSync(resolved).isDirectory()) return null;
+  return resolved;
+}
+
+function getSettings(data) {
+  return { ...defaultSettings, ...(data.settings || {}) };
+}
+
+function getStaff(data) {
+  return Array.isArray(data.staff) && data.staff.length ? data.staff : defaultStaff;
 }
 
 function readBody(req) {
@@ -229,20 +296,23 @@ function createSmsOutboxItem({ to, body, type, relatedId }) {
   };
 }
 
-function createMissedCall(payload) {
+function createMissedCall(payload, data) {
   const token = makeToken();
   const callerPhone = displayPhone(payload.callerPhone || payload.From || payload.from);
   const businessPhone = displayPhone(payload.businessPhone || payload.To || payload.to);
+  const settings = getSettings(data || {});
   const callbackUrl = `${PUBLIC_BASE_URL}/book.html?request=${token}`;
+  const businessName = payload.businessName || settings.businessName || BUSINESS_NAME;
+  const template = settings.autoResponseTemplate || "Sorry we missed your call. Tell us why you called and request a callback.";
 
   return {
     id: makeId("CALL"),
     token,
     callerPhone,
     businessPhone,
-    businessName: payload.businessName || BUSINESS_NAME,
+    businessName,
     callbackUrl,
-    smsText: `Sorry we missed your call. Tell us why you called and request a callback: ${callbackUrl}`,
+    smsText: `${template} ${callbackUrl}`,
     status: "sms_ready",
     createdAt: nowIso()
   };
@@ -461,7 +531,7 @@ async function handleRequest(req, res) {
     if (!callerPhone) return sendJson(res, 400, { error: "callerPhone is required" });
 
     const data = readStore();
-    const missedCall = createMissedCall(payload);
+    const missedCall = createMissedCall(payload, data);
     const sms = createSmsOutboxItem({
       to: missedCall.callerPhone,
       body: missedCall.smsText,
@@ -644,6 +714,94 @@ async function handleRequest(req, res) {
     return sendJson(res, 201, { review });
   }
 
+  if (req.method === "GET" && url.pathname === "/api/settings") {
+    const data = readStore();
+    return sendJson(res, 200, { settings: getSettings(data) });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/settings") {
+    const payload = await readBody(req);
+    const data = readStore();
+    data.settings = {
+      ...getSettings(data),
+      ...payload,
+      bufferMinutes: Number(payload.bufferMinutes ?? getSettings(data).bufferMinutes) || 15,
+      startHour: Number(payload.startHour ?? getSettings(data).startHour) || 8,
+      endHour: Number(payload.endHour ?? getSettings(data).endHour) || 18
+    };
+    writeStore(data);
+    return sendJson(res, 200, { settings: data.settings });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/staff") {
+    const data = readStore();
+    return sendJson(res, 200, { staff: getStaff(data) });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/staff") {
+    const payload = await readBody(req);
+    const name = String(payload.name || "").trim();
+    if (!name) return sendJson(res, 400, { error: "name is required" });
+
+    const data = readStore();
+    const staff = getStaff(data);
+    let member;
+
+    if (payload.id) {
+      const index = staff.findIndex((item) => item.id === payload.id);
+      if (index === -1) return notFound(res);
+      member = {
+        ...staff[index],
+        name,
+        role: String(payload.role || staff[index].role || "Staff").trim(),
+        status: String(payload.status || staff[index].status || "Active").trim()
+      };
+      staff[index] = member;
+    } else {
+      member = {
+        id: makeId("STAFF"),
+        name,
+        role: String(payload.role || "Staff").trim(),
+        status: String(payload.status || "Active").trim()
+      };
+      staff.unshift(member);
+    }
+
+    data.staff = staff;
+    writeStore(data);
+    return sendJson(res, payload.id ? 200 : 201, { staff: data.staff, member });
+  }
+
+  if (req.method === "PATCH" && url.pathname.startsWith("/api/staff/")) {
+    const id = decodeURIComponent(url.pathname.replace("/api/staff/", ""));
+    const payload = await readBody(req);
+    const data = readStore();
+    let staff = getStaff(data);
+
+    if (payload.action === "delete") {
+      staff = staff.filter((item) => item.id !== id);
+      data.staff = staff;
+      writeStore(data);
+      return sendJson(res, 200, { staff });
+    }
+
+    const index = staff.findIndex((item) => item.id === id);
+    if (index === -1) return notFound(res);
+    staff[index] = {
+      ...staff[index],
+      ...payload,
+      id
+    };
+    data.staff = staff;
+    writeStore(data);
+    return sendJson(res, 200, { staff, member: staff[index] });
+  }
+
+  if (req.method === "GET") {
+    const filePath = safeStaticPath(url.pathname);
+    if (filePath) return sendFile(res, filePath);
+  }
+
   return notFound(res);
 }
 
@@ -654,6 +812,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Callback API listening on http://${HOST}:${PORT}`);
-  console.log(`Client links will use ${PUBLIC_BASE_URL}`);
+  console.log(`CallbackFlow running on http://${HOST}:${PORT}`);
+  console.log(`Home: ${PUBLIC_BASE_URL}/`);
+  console.log(`Customer form: ${PUBLIC_BASE_URL}/book.html`);
 });

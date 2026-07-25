@@ -1,4 +1,14 @@
-const API_BASE_URL = "http://127.0.0.1:8787";
+function resolveApiBase() {
+  if (typeof window === "undefined") return "http://127.0.0.1:4174";
+  if (window.CALLBACK_API_BASE) return window.CALLBACK_API_BASE;
+
+  const { protocol, hostname, port } = window.location;
+  // Same-origin when served by CallbackFlow server
+  if (port === "4174" || port === "8787" || port === "") return "";
+  return `${protocol}//${hostname}:4174`;
+}
+
+const API_BASE_URL = resolveApiBase();
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -9,7 +19,7 @@ async function request(path, options = {}) {
     }
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.error || `API request failed with ${response.status}`);
   }
@@ -17,6 +27,8 @@ async function request(path, options = {}) {
 }
 
 export const callbackApi = {
+  baseUrl: API_BASE_URL || window.location.origin,
+
   async isAvailable() {
     try {
       await request("/health");
@@ -32,6 +44,13 @@ export const callbackApi = {
 
   async getMissedCall(token) {
     return request(`/api/request/${encodeURIComponent(token)}`);
+  },
+
+  async createMissedCall(payload) {
+    return request("/api/missed-call", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
   },
 
   async createCallbackRequest(payload) {
@@ -95,6 +114,35 @@ export const callbackApi = {
     return request("/api/reviews", {
       method: "POST",
       body: JSON.stringify(payload)
+    });
+  },
+
+  async getSettings() {
+    return request("/api/settings");
+  },
+
+  async saveSettings(payload) {
+    return request("/api/settings", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async getStaff() {
+    return request("/api/staff");
+  },
+
+  async saveStaff(payload) {
+    return request("/api/staff", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async deleteStaff(id) {
+    return request(`/api/staff/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: "delete" })
     });
   }
 };

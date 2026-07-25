@@ -3,7 +3,8 @@ const STORAGE_KEYS = {
   settings: "cms_settings",
   activity: "cms_activity",
   reviews: "cms_reviews",
-  staffNotes: "cms_staff_notes"
+  staffNotes: "cms_staff_notes",
+  staff: "cms_staff"
 };
 
 const defaultInteractions = [
@@ -94,11 +95,21 @@ const defaultSettings = {
   businessName: "Demo Business",
   businessHoursLabel: "Mon-Fri, 8:00 AM - 6:00 PM",
   responseTimeLabel: "Usually within 15 minutes during business hours",
+  autoResponseTemplate: "Sorry we missed your call. Tap your secure link to tell us why you called and request a callback.",
+  escalationAlerts: true,
+  staffAccessControls: true,
+  dailySummaryEmails: true,
   workingDays: [1, 2, 3, 4, 5],
   startHour: 8,
   endHour: 18,
   bufferMinutes: 15
 };
+
+const defaultStaff = [
+  { id: "STAFF-1", name: "Maya Reynolds", role: "Manager", status: "Active" },
+  { id: "STAFF-2", name: "Noah Green", role: "Staff", status: "Active" },
+  { id: "STAFF-3", name: "Alex Chen", role: "Staff", status: "On Call" }
+];
 
 const defaultActivity = [
   {
@@ -191,12 +202,54 @@ export const store = {
   },
 
   getSettings() {
-    return readJson(STORAGE_KEYS.settings, defaultSettings);
+    return { ...defaultSettings, ...readJson(STORAGE_KEYS.settings, {}) };
   },
 
-  saveSettings(data) {
-    writeJson(STORAGE_KEYS.settings, data);
-    window.dispatchEvent(new CustomEvent("cms:settings-updated"));
+  saveSettings(data, { silent = false } = {}) {
+    const next = { ...this.getSettings(), ...data };
+    writeJson(STORAGE_KEYS.settings, next);
+    window.dispatchEvent(new CustomEvent("cms:settings-updated", { detail: next }));
+    if (!silent) this.addActivity("Settings", "Business settings updated.");
+    return next;
+  },
+
+  getStaff() {
+    return readJson(STORAGE_KEYS.staff, defaultStaff);
+  },
+
+  saveStaff(list, { silent = false } = {}) {
+    writeJson(STORAGE_KEYS.staff, list);
+    window.dispatchEvent(new CustomEvent("cms:staff-updated"));
+    if (!silent) this.addActivity("Staff", "Staff list updated.");
+    return list;
+  },
+
+  upsertStaff(member) {
+    const staff = this.getStaff();
+    if (member.id) {
+      const next = staff.map((item) => (item.id === member.id ? { ...item, ...member } : item));
+      this.saveStaff(next, { silent: true });
+      this.addActivity("Staff", `Updated ${member.name}.`);
+      return next.find((item) => item.id === member.id);
+    }
+
+    const created = {
+      id: `STAFF-${Date.now()}`,
+      name: member.name,
+      role: member.role || "Staff",
+      status: member.status || "Active"
+    };
+    const next = [created, ...staff];
+    this.saveStaff(next, { silent: true });
+    this.addActivity("Staff", `Added ${created.name}.`);
+    return created;
+  },
+
+  removeStaff(id) {
+    const next = this.getStaff().filter((item) => item.id !== id);
+    this.saveStaff(next, { silent: true });
+    this.addActivity("Staff", `Removed staff member ${id}.`);
+    return next;
   },
 
   getActivity() {
