@@ -1,5 +1,6 @@
-# Runtime callback/queue data can be regenerated.
-# Business accounts are kept in data/accounts.json and must persist locally.
+data/
+!data/.gitkeep
+data/accounts.json
 data/callback-store.json
 data/*.tmp
 node_modules/
