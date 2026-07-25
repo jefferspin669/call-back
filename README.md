@@ -1,56 +1,35 @@
-# Missed Call Callback System
+# CallbackFlow
 
-This project has a professional client request page, staff dashboard, and a local API that simulates the real missed-call workflow.
+Recover missed calls, collect caller details, and manage follow-up from one staff workspace.
 
-## Run locally
+## Start
 
-Start the static site:
-
-```powershell
-python -m http.server 4174 --bind 127.0.0.1
+```bash
+npm start
 ```
 
-Start the callback API:
+or
 
-```powershell
-C:\Users\PC\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe server.js
+```bash
+node server.js
 ```
 
-Open:
+Then open:
 
-- Client request page: `http://127.0.0.1:4174/book.html`
-- Staff dashboard: `http://127.0.0.1:4174/index.html`
-- API health check: `http://127.0.0.1:8787/health`
-- SMS outbox: `http://127.0.0.1:8787/api/outbox`
-- Business alerts: `http://127.0.0.1:8787/api/notifications`
+- Staff home: [http://127.0.0.1:4174/](http://127.0.0.1:4174/)
+- Customer form: [http://127.0.0.1:4174/book.html](http://127.0.0.1:4174/book.html)
+- Admin: [http://127.0.0.1:4174/#admin](http://127.0.0.1:4174/#admin)
 
-## Flow
+One server hosts both the website and the API.
 
-1. Phone provider posts a missed call to `POST /api/missed-call`.
-2. The API creates a secure request token and callback link.
-3. The API returns the SMS text that would be sent to the caller.
-4. Caller opens the link and submits name, phone, reason, and details.
-5. The API records the callback request and business notification.
-6. The API records simulated SMS outbox entries for the caller and business.
-7. The dashboard syncs API interactions and business alerts into the staff queue.
+## What you can do
 
-## Simulate a missed call
+- Browse the callback queue with urgent priority cues
+- Open a request to leave staff notes and mark urgent / complete / cancelled
+- Save admin business settings and manage staff
+- Simulate a missed call and send a customer request with picture or voice memo
+- Track analytics and collect reviews
 
-```powershell
-$body = @{
-  callerPhone = "(555) 777-0199"
-  businessPhone = "(555) 010-9000"
-  businessName = "Demo Business"
-} | ConvertTo-Json
+## Important
 
-Invoke-RestMethod -Method Post `
-  -Uri http://127.0.0.1:8787/api/missed-call `
-  -ContentType "application/json" `
-  -Body $body
-```
-
-Use the returned `callbackUrl` as the text-message link.
-
-## Production note
-
-The API currently simulates SMS and business alerts. That keeps local testing safe and avoids sending real customer data to a third-party provider. To send live SMS, connect a provider such as Twilio on the server side after choosing the business phone number, destination rules, consent language, and data-retention policy.
+Open the app through the server URL above. Opening the HTML file directly (`file://`) will break the buttons.
