@@ -1,34 +1,113 @@
 import { auth } from "./auth.js";
 
-function resolveApiBase() {
-  if (typeof window === "undefined") return "http://127.0.0.1:4174";
-  if (window.CALLBACK_API_BASE) return window.CALLBACK_API_BASE;
+let resolvedBase = null;
+let resolvePromise = null;
 
-  const { protocol, hostname, port } = window.location;
-  if (port === "4174" || port === "8787" || port === "") return "";
-  return `${protocol}//${hostname}:4174`;
+function candidateBases() {
+  if (typeof window === "undefined") {
+    return ["http://127.0.0.1:4174", "http://localhost:4174"];
+  }
+
+  if (window.CALLBACK_API_BASE) {
+    return [window.CALLBACK_API_BASE];
+  }
+
+  const { protocol, hostname, origin, port } = window.location;
+  const list = [];
+
+  if (protocol === "http:" || protocol === "https:") {
+    // Prefer same-origin when the page is served by CallbackFlow.
+    list.push("");
+    list.push(origin);
+    if (hostname && port !== "4174") {
+      list.push(`${protocol}//${hostname}:4174`);
+    }
+  }
+
+  list.push("http://127.0.0.1:4174", "http://localhost:4174");
+
+  // Deduplicate while preserving order.
+  return [...new Set(list)];
 }
 
-const API_BASE_URL = resolveApiBase();
+async function probeBase(base) {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), 2500) : null;
+  try {
+    const response = await fetch(`${base}/health`, {
+      method: "GET",
+      signal: controller?.signal,
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) return false;
+    const data = await response.json().catch(() => null);
+    return Boolean(data && data.ok);
+  } catch {
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function resolveApiBase(force = false) {
+  if (!force && resolvedBase !== null) return resolvedBase;
+  if (!force && resolvePromise) return resolvePromise;
+
+  resolvePromise = (async () => {
+    for (const base of candidateBases()) {
+      if (await probeBase(base)) {
+        resolvedBase = base;
+        return resolvedBase;
+      }
+    }
+    // Fall back to same-origin or localhost so error messages stay useful.
+    resolvedBase = typeof window !== "undefined"
+      && (window.location.protocol === "http:" || window.location.protocol === "https:")
+      ? ""
+      : "http://127.0.0.1:4174";
+    return resolvedBase;
+  })();
+
+  try {
+    return await resolvePromise;
+  } finally {
+    resolvePromise = null;
+  }
+}
 
 async function request(path, options = {}) {
+  const base = await resolveApiBase();
   const headers = {
-    "Content-Type": "application/json",
+    Accept: "application/json",
     ...(options.headers || {})
   };
+
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const token = auth.getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers
-  });
+  let response;
+  try {
+    response = await fetch(`${base}${path}`, {
+      ...options,
+      headers
+    });
+  } catch (error) {
+    // Retry discovery once on network failure.
+    resolvedBase = null;
+    const retryBase = await resolveApiBase(true);
+    response = await fetch(`${retryBase}${path}`, {
+      ...options,
+      headers
+    });
+  }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (response.status === 401) {
-      // Stale session
       if (path !== "/api/auth/login" && path !== "/api/auth/me") {
         auth.clearSession();
       }
@@ -39,15 +118,34 @@ async function request(path, options = {}) {
 }
 
 export const callbackApi = {
-  baseUrl: API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:4174"),
+  get baseUrl() {
+    if (resolvedBase !== null) {
+      return resolvedBase || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:4174");
+    }
+    return typeof window !== "undefined" && (window.location.protocol === "http:" || window.location.protocol === "https:")
+      ? window.location.origin
+      : "http://127.0.0.1:4174";
+  },
 
   async isAvailable() {
     try {
-      await request("/health");
-      return true;
+      resolvedBase = null;
+      const base = await resolveApiBase(true);
+      return probeBase(base);
     } catch {
       return false;
     }
+  },
+
+  async getConnectionInfo() {
+    const available = await this.isAvailable();
+    return {
+      available,
+      baseUrl: this.baseUrl,
+      hint: available
+        ? `Connected to ${this.baseUrl}`
+        : "Server not reachable. In a terminal run: node server.js  then open http://127.0.0.1:4174/"
+    };
   },
 
   getRequestToken() {
@@ -94,8 +192,6 @@ export const callbackApi = {
     } catch {
       // ignore network errors on logout
     }
-    // Keep remembered email so the admin can sign in again later.
-    // The business account itself remains saved on the server.
     auth.clearSession({ keepRememberedEmail: true });
   },
 

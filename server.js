@@ -1046,8 +1046,21 @@ const server = http.createServer((req, res) => {
   });
 });
 
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`Port ${PORT} is already in use.`);
+    console.error(`Stop the other process, or run: bash start.sh`);
+    process.exit(1);
+  }
+  console.error("Failed to start CallbackFlow server:", error.message || error);
+  process.exit(1);
+});
+
 server.listen(PORT, HOST, () => {
   console.log(`CallbackFlow running on http://${HOST}:${PORT}`);
-  console.log(`Home: ${PUBLIC_BASE_URL}/`);
+  console.log(`Open this exact URL in your browser:`);
+  console.log(`  ${PUBLIC_BASE_URL}/`);
   console.log(`Customer form: ${PUBLIC_BASE_URL}/book.html`);
+  console.log(`Signup: ${PUBLIC_BASE_URL}/signup.html`);
+  console.log(`Health: ${PUBLIC_BASE_URL}/health`);
 });

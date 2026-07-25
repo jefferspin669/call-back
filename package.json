@@ -4,8 +4,9 @@
   "private": true,
   "description": "Missed-call callback recovery workspace",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "bash start.sh",
+    "dev": "bash start.sh",
+    "server": "node server.js"
   },
   "engines": {
     "node": ">=18"

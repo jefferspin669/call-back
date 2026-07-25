@@ -131,8 +131,12 @@
       }
 
       try {
-        if (!(await callbackApi.isAvailable())) {
-          setMessage("Server is not running. Start it with: node server.js", "error");
+        const connection = await callbackApi.getConnectionInfo();
+        if (!connection.available) {
+          setMessage(
+            "Cannot reach the CallbackFlow server. Run ./start.sh (or npm start), then open http://127.0.0.1:4174/",
+            "error"
+          );
           return;
         }
         const result = await callbackApi.signup(payload);
