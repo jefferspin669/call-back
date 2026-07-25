@@ -26,9 +26,18 @@ One server hosts both the website and the API.
 
 - Browse the callback queue with urgent priority cues
 - Open a request to leave staff notes and mark urgent / complete / cancelled
-- Save admin business settings and manage staff
+- Create a business account and lock Admin behind login
+- Save admin business settings and manage staff (signed-in only)
 - Simulate a missed call and send a customer request with picture or voice memo
 - Track analytics and collect reviews
+
+## Business accounts
+
+1. Open [http://127.0.0.1:4174/signup.html](http://127.0.0.1:4174/signup.html)
+2. Create an account for your business
+3. Open Admin and sign in to unlock settings
+
+Admin settings and staff changes require a valid login session.
 
 ## Important
 

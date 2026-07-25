@@ -34,6 +34,8 @@ const defaultStaff = [
   { id: "STAFF-3", name: "Alex Chen", role: "Staff", status: "On Call" }
 ];
 
+const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
+
 const initialData = {
   missedCalls: [],
   callbackRequests: [],
@@ -42,7 +44,9 @@ const initialData = {
   reviews: [],
   staffNotes: [],
   settings: defaultSettings,
-  staff: defaultStaff
+  staff: defaultStaff,
+  accounts: [],
+  sessions: []
 };
 
 const MIME_TYPES = {
@@ -86,11 +90,82 @@ function sendJson(res, status, data) {
   res.writeHead(status, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.scryptSync(String(password), salt, 64).toString("hex");
+  return { salt, hash };
+}
+
+function verifyPassword(password, salt, expectedHash) {
+  const { hash } = hashPassword(password, salt);
+  const left = Buffer.from(hash, "hex");
+  const right = Buffer.from(expectedHash, "hex");
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function publicAccount(account) {
+  if (!account) return null;
+  return {
+    id: account.id,
+    businessName: account.businessName,
+    ownerName: account.ownerName,
+    email: account.email,
+    phone: account.phone || "",
+    createdAt: account.createdAt
+  };
+}
+
+function cleanupSessions(data) {
+  const now = Date.now();
+  data.sessions = (data.sessions || []).filter((session) => new Date(session.expiresAt).getTime() > now);
+  return data.sessions;
+}
+
+function createSession(data, accountId) {
+  cleanupSessions(data);
+  const session = {
+    token: crypto.randomBytes(24).toString("hex"),
+    accountId,
+    createdAt: nowIso(),
+    expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString()
+  };
+  data.sessions = data.sessions || [];
+  data.sessions.unshift(session);
+  return session;
+}
+
+function getBearerToken(req) {
+  const header = req.headers.authorization || "";
+  if (header.toLowerCase().startsWith("bearer ")) {
+    return header.slice(7).trim();
+  }
+  return "";
+}
+
+function getSessionAccount(req, data) {
+  const token = getBearerToken(req);
+  if (!token) return null;
+  cleanupSessions(data);
+  const session = (data.sessions || []).find((item) => item.token === token);
+  if (!session) return null;
+  const account = (data.accounts || []).find((item) => item.id === session.accountId);
+  if (!account) return null;
+  return { session, account };
+}
+
+function requireAuth(req, res, data) {
+  const auth = getSessionAccount(req, data);
+  if (!auth) {
+    sendJson(res, 401, { error: "Admin login required" });
+    return null;
+  }
+  return auth;
 }
 
 function notFound(res) {
@@ -715,14 +790,116 @@ async function handleRequest(req, res) {
     return sendJson(res, 201, { review });
   }
 
+  if (req.method === "GET" && url.pathname === "/api/auth/status") {
+    const data = readStore();
+    return sendJson(res, 200, {
+      hasAccounts: (data.accounts || []).length > 0,
+      accountCount: (data.accounts || []).length
+    });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/auth/signup") {
+    const payload = await readBody(req);
+    const businessName = String(payload.businessName || "").trim();
+    const ownerName = String(payload.ownerName || "").trim();
+    const email = String(payload.email || "").trim().toLowerCase();
+    const phone = displayPhone(payload.phone || "");
+    const password = String(payload.password || "");
+
+    if (!businessName || !ownerName || !email || !password) {
+      return sendJson(res, 400, { error: "businessName, ownerName, email, and password are required" });
+    }
+    if (password.length < 8) {
+      return sendJson(res, 400, { error: "Password must be at least 8 characters" });
+    }
+    if (!email.includes("@")) {
+      return sendJson(res, 400, { error: "A valid email is required" });
+    }
+
+    const data = readStore();
+    data.accounts = data.accounts || [];
+    if (data.accounts.some((item) => item.email === email)) {
+      return sendJson(res, 409, { error: "An account with this email already exists" });
+    }
+
+    const { salt, hash } = hashPassword(password);
+    const account = {
+      id: makeId("ACCT"),
+      businessName,
+      ownerName,
+      email,
+      phone,
+      passwordSalt: salt,
+      passwordHash: hash,
+      createdAt: nowIso()
+    };
+
+    data.accounts.unshift(account);
+    // First account seeds business settings name
+    data.settings = {
+      ...getSettings(data),
+      businessName
+    };
+    const session = createSession(data, account.id);
+    writeStore(data);
+
+    return sendJson(res, 201, {
+      account: publicAccount(account),
+      token: session.token,
+      expiresAt: session.expiresAt
+    });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/auth/login") {
+    const payload = await readBody(req);
+    const email = String(payload.email || "").trim().toLowerCase();
+    const password = String(payload.password || "");
+    if (!email || !password) {
+      return sendJson(res, 400, { error: "email and password are required" });
+    }
+
+    const data = readStore();
+    const account = (data.accounts || []).find((item) => item.email === email);
+    if (!account || !verifyPassword(password, account.passwordSalt, account.passwordHash)) {
+      return sendJson(res, 401, { error: "Invalid email or password" });
+    }
+
+    const session = createSession(data, account.id);
+    writeStore(data);
+    return sendJson(res, 200, {
+      account: publicAccount(account),
+      token: session.token,
+      expiresAt: session.expiresAt
+    });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/auth/logout") {
+    const data = readStore();
+    const token = getBearerToken(req);
+    data.sessions = (data.sessions || []).filter((item) => item.token !== token);
+    writeStore(data);
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/auth/me") {
+    const data = readStore();
+    const auth = getSessionAccount(req, data);
+    if (!auth) return sendJson(res, 401, { error: "Admin login required" });
+    return sendJson(res, 200, {
+      account: publicAccount(auth.account),
+      expiresAt: auth.session.expiresAt
+    });
+  }
+
   if (req.method === "GET" && url.pathname === "/api/settings") {
     const data = readStore();
     return sendJson(res, 200, { settings: getSettings(data) });
   }
 
   if (req.method === "POST" && url.pathname === "/api/settings") {
-    const payload = await readBody(req);
     const data = readStore();
+    if (!requireAuth(req, res, data)) return;
+    const payload = await readBody(req);
     data.settings = {
       ...getSettings(data),
       ...payload,
@@ -740,11 +917,12 @@ async function handleRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/staff") {
+    const data = readStore();
+    if (!requireAuth(req, res, data)) return;
     const payload = await readBody(req);
     const name = String(payload.name || "").trim();
     if (!name) return sendJson(res, 400, { error: "name is required" });
 
-    const data = readStore();
     const staff = getStaff(data);
     let member;
 
@@ -774,9 +952,10 @@ async function handleRequest(req, res) {
   }
 
   if (req.method === "PATCH" && url.pathname.startsWith("/api/staff/")) {
+    const data = readStore();
+    if (!requireAuth(req, res, data)) return;
     const id = decodeURIComponent(url.pathname.replace("/api/staff/", ""));
     const payload = await readBody(req);
-    const data = readStore();
     let staff = getStaff(data);
 
     if (payload.action === "delete") {
