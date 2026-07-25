@@ -11,8 +11,11 @@ const BUSINESS_NAME = process.env.BUSINESS_NAME || "Demo Business";
 const BUSINESS_ALERT_PHONE = process.env.BUSINESS_ALERT_PHONE || "(555) 010-9000";
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "callback-store.json");
+const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
 const ROOT_DIR = __dirname;
 const MAX_BODY_BYTES = 12_000_000;
+const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
+const REMEMBER_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 const defaultSettings = {
   businessName: BUSINESS_NAME,
@@ -34,8 +37,6 @@ const defaultStaff = [
   { id: "STAFF-3", name: "Alex Chen", role: "Staff", status: "On Call" }
 ];
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
-
 const initialData = {
   missedCalls: [],
   callbackRequests: [],
@@ -45,7 +46,6 @@ const initialData = {
   staffNotes: [],
   settings: defaultSettings,
   staff: defaultStaff,
-  accounts: [],
   sessions: []
 };
 
@@ -69,20 +69,69 @@ function ensureStore() {
   if (!fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
   }
+  if (!fs.existsSync(ACCOUNTS_FILE)) {
+    // Migrate any accounts already saved in the main store.
+    let migrated = [];
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+        if (Array.isArray(parsed.accounts)) migrated = parsed.accounts;
+      }
+    } catch {
+      migrated = [];
+    }
+    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify({ accounts: migrated }, null, 2));
+  }
+}
+
+function readAccounts() {
+  ensureStore();
+  try {
+    const parsed = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, "utf8"));
+    return Array.isArray(parsed.accounts) ? parsed.accounts : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAccounts(accounts) {
+  ensureStore();
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
+  // Atomic-ish write so accounts are not lost on crash.
+  const tempFile = `${ACCOUNTS_FILE}.tmp`;
+  fs.writeFileSync(tempFile, JSON.stringify({ accounts: safeAccounts }, null, 2));
+  fs.renameSync(tempFile, ACCOUNTS_FILE);
 }
 
 function readStore() {
   ensureStore();
   try {
-    return { ...initialData, ...JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) };
+    const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+    const merged = { ...initialData, ...parsed };
+    // Accounts always come from the durable accounts file.
+    merged.accounts = readAccounts();
+    // If legacy store still has accounts and durable file is empty, migrate once.
+    if (!merged.accounts.length && Array.isArray(parsed.accounts) && parsed.accounts.length) {
+      merged.accounts = parsed.accounts;
+      writeAccounts(parsed.accounts);
+    }
+    return merged;
   } catch {
-    return { ...initialData };
+    return { ...initialData, accounts: readAccounts() };
   }
 }
 
 function writeStore(data) {
   ensureStore();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  if (Array.isArray(data.accounts)) {
+    writeAccounts(data.accounts);
+  } else {
+    // Never wipe durable accounts if a writer forgot to include them.
+    data.accounts = readAccounts();
+  }
+  // Keep callback data separate from durable accounts.
+  const { accounts, ...rest } = data;
+  fs.writeFileSync(DATA_FILE, JSON.stringify(rest, null, 2));
 }
 
 function sendJson(res, status, data) {
@@ -127,13 +176,15 @@ function cleanupSessions(data) {
   return data.sessions;
 }
 
-function createSession(data, accountId) {
+function createSession(data, accountId, { rememberMe = false } = {}) {
   cleanupSessions(data);
+  const ttl = rememberMe ? REMEMBER_SESSION_TTL_MS : SESSION_TTL_MS;
   const session = {
     token: crypto.randomBytes(24).toString("hex"),
     accountId,
+    rememberMe: Boolean(rememberMe),
     createdAt: nowIso(),
-    expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString()
+    expiresAt: new Date(Date.now() + ttl).toISOString()
   };
   data.sessions = data.sessions || [];
   data.sessions.unshift(session);
@@ -840,13 +891,15 @@ async function handleRequest(req, res) {
       ...getSettings(data),
       businessName
     };
-    const session = createSession(data, account.id);
+    const rememberMe = payload.rememberMe !== false;
+    const session = createSession(data, account.id, { rememberMe });
     writeStore(data);
 
     return sendJson(res, 201, {
       account: publicAccount(account),
       token: session.token,
-      expiresAt: session.expiresAt
+      expiresAt: session.expiresAt,
+      rememberMe: session.rememberMe
     });
   }
 
@@ -854,6 +907,7 @@ async function handleRequest(req, res) {
     const payload = await readBody(req);
     const email = String(payload.email || "").trim().toLowerCase();
     const password = String(payload.password || "");
+    const rememberMe = Boolean(payload.rememberMe);
     if (!email || !password) {
       return sendJson(res, 400, { error: "email and password are required" });
     }
@@ -864,12 +918,13 @@ async function handleRequest(req, res) {
       return sendJson(res, 401, { error: "Invalid email or password" });
     }
 
-    const session = createSession(data, account.id);
+    const session = createSession(data, account.id, { rememberMe });
     writeStore(data);
     return sendJson(res, 200, {
       account: publicAccount(account),
       token: session.token,
-      expiresAt: session.expiresAt
+      expiresAt: session.expiresAt,
+      rememberMe: session.rememberMe
     });
   }
 

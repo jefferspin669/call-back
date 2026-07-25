@@ -75,13 +75,20 @@
               <div class="row-2">
                 <div>
                   <label for="password">Password</label>
-                  <input id="password" type="password" minlength="8" required />
+                  <input id="password" type="password" minlength="8" required autocomplete="new-password" />
                 </div>
                 <div>
                   <label for="confirmPassword">Confirm password</label>
-                  <input id="confirmPassword" type="password" minlength="8" required />
+                  <input id="confirmPassword" type="password" minlength="8" required autocomplete="new-password" />
                 </div>
               </div>
+              <label class="switch-row" for="rememberMe">
+                <div>
+                  <strong>Remember me on this device</strong>
+                  <div class="subtle">Your account is always saved. This keeps you signed in longer here.</div>
+                </div>
+                <input id="rememberMe" type="checkbox" checked />
+              </label>
               <div id="signupMessage" class="message"></div>
               <button class="btn btn-primary full-width" type="submit">Create business account</button>
               <div class="tiny">
@@ -108,12 +115,13 @@
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const payload = {
+        const payload = {
         businessName: document.getElementById("businessName").value.trim(),
         ownerName: document.getElementById("ownerName").value.trim(),
         phone: document.getElementById("phone").value.trim(),
         email: document.getElementById("email").value.trim(),
-        password: document.getElementById("password").value
+        password: document.getElementById("password").value,
+        rememberMe: Boolean(document.getElementById("rememberMe")?.checked)
       };
       const confirmPassword = document.getElementById("confirmPassword").value;
 

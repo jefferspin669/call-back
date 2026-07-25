@@ -37,6 +37,9 @@ One server hosts both the website and the API.
 2. Create an account for your business
 3. Open Admin and sign in to unlock settings
 
+Business accounts are saved in `data/accounts.json` and are **not deleted on logout**.
+Use **Remember me** to keep your email filled in and stay signed in longer on that device.
+
 Admin settings and staff changes require a valid login session.
 
 ## Important

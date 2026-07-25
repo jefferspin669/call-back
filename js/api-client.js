@@ -61,9 +61,14 @@ export const callbackApi = {
   async signup(payload) {
     const result = await request("/api/auth/signup", {
       method: "POST",
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ ...payload, rememberMe: payload.rememberMe !== false })
     });
-    auth.saveSession(result);
+    auth.saveSession({
+      token: result.token,
+      account: result.account,
+      rememberMe: result.rememberMe !== false,
+      email: payload.email
+    });
     return result;
   },
 
@@ -72,7 +77,12 @@ export const callbackApi = {
       method: "POST",
       body: JSON.stringify(payload)
     });
-    auth.saveSession(result);
+    auth.saveSession({
+      token: result.token,
+      account: result.account,
+      rememberMe: Boolean(payload.rememberMe || result.rememberMe),
+      email: payload.email
+    });
     return result;
   },
 
@@ -84,7 +94,9 @@ export const callbackApi = {
     } catch {
       // ignore network errors on logout
     }
-    auth.clearSession();
+    // Keep remembered email so the admin can sign in again later.
+    // The business account itself remains saved on the server.
+    auth.clearSession({ keepRememberedEmail: true });
   },
 
   async me() {
