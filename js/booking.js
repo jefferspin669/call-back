@@ -751,7 +751,7 @@ function setupEventListeners() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootBooking() {
   applySettings();
   setupEventListeners();
   applyMissedCallContext();
@@ -763,4 +763,10 @@ document.addEventListener("DOMContentLoaded", () => {
   updateSummary();
   updateStatusChips();
   updateRecordButton();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootBooking);
+} else {
+  bootBooking();
+}

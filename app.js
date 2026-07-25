@@ -65,8 +65,8 @@ function activateTab(tabName) {
   const target = document.getElementById(tabName);
   if (!target) return;
 
-  document.querySelectorAll("[data-nav]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.nav === tabName && btn.classList.contains("tab"));
+  document.querySelectorAll(".nav-btn[data-nav]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.nav === tabName);
   });
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("active", view.id === tabName);
@@ -166,8 +166,9 @@ function renderMetrics(analytics) {
 function renderTable() {
   const searchInput = document.getElementById("searchInput");
   const filterSelect = document.getElementById("filterSelect");
+  const list = document.getElementById("requestList");
   const body = document.getElementById("interactionTable");
-  if (!body) return;
+  if (!list && !body) return;
 
   const q = (searchInput?.value || "").toLowerCase().trim();
   const filter = filterSelect?.value || "all";
@@ -184,38 +185,52 @@ function renderTable() {
   });
 
   if (!rows.length) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="6">
-          <div class="subtle">No requests match this filter. Try Simulate Missed Call or open the customer form.</div>
-        </td>
-      </tr>
-    `;
+    const empty = '<div class="subtle">No requests match this filter. Try Simulate missed call or open the customer form.</div>';
+    if (list) list.innerHTML = empty;
+    if (body) body.innerHTML = `<tr><td>${empty}</td></tr>`;
     renderDashboardAiPreview(null);
     renderHistoryPreview(null);
     return;
   }
 
-  body.innerHTML = rows.map((item) => `
-    <tr class="clickable-row request-card ${priorityRowClass(item.priority)}" data-id="${escapeHtml(item.id)}">
-      <td>
-        <strong class="caller-name">${escapeHtml(item.client)}</strong>
-        <div class="subtle">${escapeHtml(item.phone)}</div>
-        <div class="subtle">${escapeHtml(item.issue)}</div>
-      </td>
-      <td>${escapeHtml(item.channel)}</td>
-      <td>
-        <span class="badge ${priorityClass(item.priority)}">${escapeHtml(item.priority)}</span>
-        ${item.urgent ? '<span class="badge badge-urgent">Urgent</span>' : ""}
-        ${item.repeatCaller ? '<span class="badge">Repeat Caller</span>' : ""}
-        ${item.picture ? '<span class="badge">Photo</span>' : ""}
-        ${item.voiceMemo ? '<span class="badge">Voice</span>' : ""}
-      </td>
-      <td><span class="badge ${statusClass(item.status)}">${escapeHtml(item.status)}</span></td>
-      <td>${escapeHtml(item.assignedTo)}</td>
-      <td>${escapeHtml(item.lastActivity)}</td>
-    </tr>
-  `).join("");
+  if (list) {
+    list.innerHTML = rows.map((item) => `
+      <article class="notice request-card ${priorityRowClass(item.priority)}" data-id="${escapeHtml(item.id)}" role="button" tabindex="0">
+        <div class="request-card-top">
+          <div>
+            <strong class="caller-name">${escapeHtml(item.client)}</strong>
+            <div class="subtle">${escapeHtml(item.phone)}</div>
+          </div>
+          <div>
+            <span class="badge ${statusClass(item.status)}">${escapeHtml(item.status)}</span>
+          </div>
+        </div>
+        <div>${escapeHtml(item.issue)}</div>
+        <div class="request-card-meta">
+          <div>
+            <span class="badge ${priorityClass(item.priority)}">${escapeHtml(item.priority)}</span>
+            ${item.urgent ? '<span class="badge badge-urgent">Urgent</span>' : ""}
+            ${item.repeatCaller ? '<span class="badge">Repeat</span>' : ""}
+            ${item.picture ? '<span class="badge">Photo</span>' : ""}
+            ${item.voiceMemo ? '<span class="badge">Voice</span>' : ""}
+          </div>
+          <div class="subtle">${escapeHtml(item.assignedTo)} · ${escapeHtml(item.lastActivity)}</div>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  if (body) {
+    body.innerHTML = rows.map((item) => `
+      <tr class="clickable-row request-card ${priorityRowClass(item.priority)}" data-id="${escapeHtml(item.id)}">
+        <td>
+          <strong class="caller-name">${escapeHtml(item.client)}</strong>
+          <div class="subtle">${escapeHtml(item.phone)}</div>
+          <div class="subtle">${escapeHtml(item.issue)}</div>
+        </td>
+      </tr>
+    `).join("");
+  }
 
   const activeInteraction = getInteractions().find((item) => item.id === activeInteractionId) || rows[0] || null;
   if (activeInteraction && !activeInteractionId) activeInteractionId = activeInteraction.id;
@@ -701,6 +716,7 @@ function setupEventHandlers() {
     if (actionBtn) {
       const action = actionBtn.dataset.action;
       if (action === "simulate-missed-call") return simulateMissedCall();
+      if (action === "refresh-data") return syncBackend().then(() => showStatus("Data refreshed."));
       if (action === "preview-message") {
         updateMessagePreview();
         setMessage("settingsMessage", "Message preview updated below.", "success");
@@ -714,11 +730,20 @@ function setupEventHandlers() {
       if (action === "cancel-request") return handleStaffAction("cancel");
     }
 
-    const row = event.target.closest("#interactionTable .clickable-row");
+    const row = event.target.closest("#requestList .request-card, #interactionTable .clickable-row");
     if (row?.dataset.id) {
       activeInteractionId = row.dataset.id;
       openDrawer(activeInteractionId);
     }
+  });
+
+  document.getElementById("requestList")?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const card = event.target.closest(".request-card");
+    if (!card?.dataset.id) return;
+    event.preventDefault();
+    activeInteractionId = card.dataset.id;
+    openDrawer(activeInteractionId);
   });
 
   document.getElementById("closeDrawerBtn")?.addEventListener("click", closeDrawer);
@@ -802,7 +827,7 @@ function setupEventHandlers() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootApp() {
   setupEventHandlers();
   renderTable();
   renderAnalytics(store.getAnalytics());
@@ -817,4 +842,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   syncBackend();
   window.setInterval(syncBackend, 10000);
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootApp);
+} else {
+  bootApp();
+}

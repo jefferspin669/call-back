@@ -4,8 +4,9 @@ const path = require("path");
 const crypto = require("crypto");
 
 const PORT = Number(process.env.PORT || 4174);
-const HOST = process.env.HOST || "127.0.0.1";
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || `http://${HOST}:${PORT}`;
+const HOST = process.env.HOST || "0.0.0.0";
+const PUBLIC_HOST = process.env.PUBLIC_HOST || "127.0.0.1";
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || `http://${PUBLIC_HOST}:${PORT}`;
 const BUSINESS_NAME = process.env.BUSINESS_NAME || "Demo Business";
 const BUSINESS_ALERT_PHONE = process.env.BUSINESS_ALERT_PHONE || "(555) 010-9000";
 const DATA_DIR = path.join(__dirname, "data");
