@@ -129,6 +129,7 @@ function activateTab(tabName) {
   if (tabName === "reviews") renderReviews();
   if (tabName === "admin") {
     updateAuthUI();
+    prefillAdminLogin();
     if (auth.isLoggedIn()) {
       loadSettingsForm();
       renderStaffList();
@@ -688,22 +689,39 @@ async function deleteStaff(id) {
   }
 }
 
+function prefillAdminLogin() {
+  const emailInput = document.getElementById("adminEmail");
+  const rememberInput = document.getElementById("adminRememberMe");
+  const remembered = auth.getRememberedEmail();
+  if (emailInput && remembered && !emailInput.value) {
+    emailInput.value = remembered;
+  }
+  if (rememberInput) {
+    rememberInput.checked = auth.shouldRememberMe() || Boolean(remembered);
+  }
+}
+
 async function handleAdminLogin(event) {
   event.preventDefault();
   const email = document.getElementById("adminEmail")?.value.trim() || "";
   const password = document.getElementById("adminPassword")?.value || "";
+  const rememberMe = Boolean(document.getElementById("adminRememberMe")?.checked);
   try {
     if (!(await callbackApi.isAvailable())) {
       setMessage("adminLoginMessage", "Server is not running. Start it with: node server.js", "error");
       return;
     }
-    const result = await callbackApi.login({ email, password });
-    setMessage("adminLoginMessage", `Welcome back, ${result.account.businessName}.`, "success");
+    const result = await callbackApi.login({ email, password, rememberMe });
+    setMessage(
+      "adminLoginMessage",
+      `Welcome back, ${result.account.businessName}. Your account stays saved for next time.`,
+      "success"
+    );
     document.getElementById("adminPassword").value = "";
     updateAuthUI();
     loadSettingsForm();
     renderStaffList();
-    showStatus("Admin unlocked.");
+    showStatus(rememberMe ? "Admin unlocked. You will stay signed in on this device." : "Admin unlocked.");
   } catch (error) {
     setMessage("adminLoginMessage", error.message || "Login failed.", "error");
   }
@@ -712,7 +730,8 @@ async function handleAdminLogin(event) {
 async function handleLogout() {
   await callbackApi.logout();
   updateAuthUI();
-  showStatus("Logged out. Admin is locked.");
+  prefillAdminLogin();
+  showStatus("Logged out. Your business account is still saved — sign in anytime.");
   activateTab("admin");
 }
 
@@ -942,6 +961,7 @@ function bootApp() {
   renderReviews();
   resetStaffForm();
   updateAuthUI();
+  prefillAdminLogin();
   refreshAuthStatus();
 
   const hash = (window.location.hash || "").replace("#", "") || "dashboard";

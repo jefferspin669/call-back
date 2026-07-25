@@ -1,3 +1,7 @@
 data/
+!data/.gitkeep
+data/accounts.json
+data/callback-store.json
+data/*.tmp
 node_modules/
 .DS_Store

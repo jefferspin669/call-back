@@ -270,25 +270,32 @@
         <div id="adminLock" class="card auth-lock">
           <div class="card-head">
             <h2>Admin is locked</h2>
-            <p>Only your business account can edit settings and staff.</p>
+            <p>Your business account stays saved. Sign in anytime to unlock settings.</p>
           </div>
           <div class="card-body">
             <form id="adminLoginForm" class="booking-form">
               <div>
                 <label for="adminEmail">Work email</label>
-                <input id="adminEmail" type="email" placeholder="you@business.com" required />
+                <input id="adminEmail" type="email" placeholder="you@business.com" required autocomplete="username" />
               </div>
               <div>
                 <label for="adminPassword">Password</label>
-                <input id="adminPassword" type="password" minlength="8" required />
+                <input id="adminPassword" type="password" minlength="8" required autocomplete="current-password" />
               </div>
+              <label class="switch-row" for="adminRememberMe">
+                <div>
+                  <strong>Remember me</strong>
+                  <div class="subtle">Keep this email filled in and stay signed in longer on this device.</div>
+                </div>
+                <input id="adminRememberMe" type="checkbox" checked />
+              </label>
               <div id="adminLoginMessage" class="message"></div>
               <div class="actions">
                 <button class="btn btn-primary" type="submit">Unlock admin</button>
                 <a class="btn btn-secondary" href="signup.html">Create business account</a>
               </div>
               <div class="tiny" id="adminLockHint">
-                New here? Create a business account first, then come back to sign in.
+                Logging out only ends this session. Your business account is kept for future sign-in.
               </div>
             </form>
           </div>
@@ -478,7 +485,7 @@
   <script type="module">
     const banner = document.getElementById("bootBanner");
     try {
-      await import("./app.js?v=auth-1");
+      await import("./app.js?v=auth-2");
       banner.textContent = "CallbackFlow ready";
       banner.classList.add("ok");
       setTimeout(() => banner.remove(), 1200);
