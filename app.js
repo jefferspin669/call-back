@@ -89,10 +89,27 @@ function updateAuthUI() {
   }
 }
 
+async function refreshServerStatus() {
+  const el = document.getElementById("serverStatus");
+  if (!el) return false;
+  el.textContent = "Checking server…";
+  const info = await callbackApi.getConnectionInfo();
+  if (info.available) {
+    el.textContent = `Server online · ${callbackApi.baseUrl || "same origin"}`;
+    el.classList.remove("is-offline");
+    el.classList.add("is-online");
+  } else {
+    el.textContent = "Server offline · run ./start.sh";
+    el.classList.remove("is-online");
+    el.classList.add("is-offline");
+  }
+  return info.available;
+}
+
 async function refreshAuthStatus() {
   updateAuthUI();
   try {
-    if (!(await callbackApi.isAvailable())) return;
+    if (!(await refreshServerStatus())) return;
     const status = await callbackApi.getAuthStatus();
     const hint = document.getElementById("adminLockHint");
     if (hint) {
@@ -707,8 +724,13 @@ async function handleAdminLogin(event) {
   const password = document.getElementById("adminPassword")?.value || "";
   const rememberMe = Boolean(document.getElementById("adminRememberMe")?.checked);
   try {
-    if (!(await callbackApi.isAvailable())) {
-      setMessage("adminLoginMessage", "Server is not running. Start it with: node server.js", "error");
+    const connection = await callbackApi.getConnectionInfo();
+    if (!connection.available) {
+      setMessage(
+        "adminLoginMessage",
+        "Cannot reach the CallbackFlow server. Run ./start.sh (or npm start), then open http://127.0.0.1:4174/",
+        "error"
+      );
       return;
     }
     const result = await callbackApi.login({ email, password, rememberMe });
@@ -835,6 +857,12 @@ function setupEventHandlers() {
     if (actionBtn) {
       const action = actionBtn.dataset.action;
       if (action === "simulate-missed-call") return simulateMissedCall();
+      if (action === "retry-server") {
+        return refreshServerStatus().then((ok) => {
+          showStatus(ok ? "Server connected." : "Still offline. Run ./start.sh then open http://127.0.0.1:4174/", ok ? "success" : "error");
+          if (ok) return syncBackend();
+        });
+      }
       if (action === "refresh-data") return syncBackend().then(() => showStatus("Data refreshed."));
       if (action === "logout") return handleLogout();
       if (action === "preview-message") {

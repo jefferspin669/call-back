@@ -755,6 +755,14 @@ th {
   padding: 0 4px 4px;
 }
 
+.auth-sidebar-status.is-online {
+  color: #d1fae5 !important;
+}
+
+.auth-sidebar-status.is-offline {
+  color: #fecaca !important;
+}
+
 .auth-lock,
 .auth-card {
   max-width: 560px;

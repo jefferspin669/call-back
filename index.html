@@ -27,7 +27,9 @@
       </nav>
 
       <div class="sidebar-actions">
+        <div id="serverStatus" class="auth-sidebar-status">Checking server…</div>
         <div id="authSidebarStatus" class="auth-sidebar-status subtle">Admin locked</div>
+        <button class="btn btn-secondary" type="button" data-action="retry-server">Retry server</button>
         <a class="btn btn-secondary" href="signup.html">Create business account</a>
         <a class="btn btn-secondary" href="book.html">Customer form</a>
         <button class="btn btn-primary" type="button" data-action="simulate-missed-call">Simulate missed call</button>
@@ -485,7 +487,7 @@
   <script type="module">
     const banner = document.getElementById("bootBanner");
     try {
-      await import("./app.js?v=auth-2");
+      await import("./app.js?v=server-1");
       banner.textContent = "CallbackFlow ready";
       banner.classList.add("ok");
       setTimeout(() => banner.remove(), 1200);

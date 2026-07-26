@@ -11,16 +11,24 @@ npm start
 or
 
 ```bash
+bash start.sh
+```
+
+or
+
+```bash
 node server.js
 ```
 
-Then open:
+Then open **exactly**:
 
 - Staff home: [http://127.0.0.1:4174/](http://127.0.0.1:4174/)
 - Customer form: [http://127.0.0.1:4174/book.html](http://127.0.0.1:4174/book.html)
 - Admin: [http://127.0.0.1:4174/#admin](http://127.0.0.1:4174/#admin)
 
 One server hosts both the website and the API.
+
+If the app says the server is offline, you are probably opening a local HTML file (`file://`). Always open the `http://127.0.0.1:4174/` URL after starting the server.
 
 ## What you can do
 
