@@ -50,7 +50,7 @@
         <div class="card auth-card">
           <div class="card-head">
             <h2>Create account</h2>
-            <p>Use a password you can remember. Minimum 8 characters.</p>
+            <p>Use a password with at least 8 characters, including a letter and a number.</p>
           </div>
           <div class="card-body">
             <form id="signupForm" class="booking-form">
@@ -127,6 +127,10 @@
 
       if (payload.password !== confirmPassword) {
         setMessage("Passwords do not match.", "error");
+        return;
+      }
+      if (payload.password.length < 8 || !/[A-Za-z]/.test(payload.password) || !/\d/.test(payload.password)) {
+        setMessage("Password must be at least 8 characters and include a letter and a number.", "error");
         return;
       }
 
