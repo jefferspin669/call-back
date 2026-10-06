@@ -16,6 +16,21 @@ const ROOT_DIR = __dirname;
 const MAX_BODY_BYTES = 12_000_000;
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 const REMEMBER_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+const AUTH_RATE_LIMIT = Number(process.env.AUTH_RATE_LIMIT || 10);
+const AUTH_RATE_WINDOW_MS = Number(process.env.AUTH_RATE_WINDOW_MS || 15 * 60 * 1000);
+const ALLOWED_ORIGINS = new Set(
+  [
+    PUBLIC_BASE_URL,
+    `http://127.0.0.1:${PORT}`,
+    `http://localhost:${PORT}`,
+    ...(String(process.env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean))
+  ]
+);
+
+const authAttempts = new Map();
 
 const defaultSettings = {
   businessName: BUSINESS_NAME,
@@ -134,16 +149,80 @@ function writeStore(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(rest, null, 2));
 }
 
-function sendJson(res, status, data) {
-  const body = JSON.stringify(data, null, 2);
-  res.writeHead(status, {
-    "Access-Control-Allow-Origin": "*",
+function securityHeaders(req = null) {
+  const headers = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
+    "Cross-Origin-Resource-Policy": "same-site",
+    "Cache-Control": "no-store",
     "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Content-Type": "application/json",
+    Vary: "Origin"
+  };
+
+  const origin = req?.headers?.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+
+  return headers;
+}
+
+function sendJson(res, status, data, req = null) {
+  const body = JSON.stringify(data, null, 2);
+  res.writeHead(status, {
+    ...securityHeaders(req),
+    "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function getClientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || req.socket?.remoteAddress || "unknown";
+}
+
+function authRateKey(req, scope) {
+  return `${scope}:${getClientIp(req)}`;
+}
+
+function checkAuthRateLimit(req, scope = "auth") {
+  const key = authRateKey(req, scope);
+  const now = Date.now();
+  const current = authAttempts.get(key) || { count: 0, resetAt: now + AUTH_RATE_WINDOW_MS };
+  if (now > current.resetAt) {
+    current.count = 0;
+    current.resetAt = now + AUTH_RATE_WINDOW_MS;
+  }
+  current.count += 1;
+  authAttempts.set(key, current);
+  return {
+    allowed: current.count <= AUTH_RATE_LIMIT,
+    retryAfterSec: Math.max(1, Math.ceil((current.resetAt - now) / 1000))
+  };
+}
+
+function clearAuthRateLimit(req, scope = "auth") {
+  authAttempts.delete(authRateKey(req, scope));
+}
+
+function sendRateLimited(res, req, retryAfterSec) {
+  const body = JSON.stringify({ error: "Too many attempts. Please try again later." }, null, 2);
+  res.writeHead(429, {
+    ...securityHeaders(req),
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Retry-After": String(retryAfterSec)
+  });
+  res.end(body);
+}
+
+function isStrongPassword(password) {
+  const value = String(password || "");
+  return value.length >= 8 && /[A-Za-z]/.test(value) && /\d/.test(value);
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
@@ -213,25 +292,42 @@ function getSessionAccount(req, data) {
 function requireAuth(req, res, data) {
   const auth = getSessionAccount(req, data);
   if (!auth) {
-    sendJson(res, 401, { error: "Admin login required" });
+    sendJson(res, 401, { error: "Admin login required" }, req);
     return null;
   }
   return auth;
 }
 
-function notFound(res) {
-  sendJson(res, 404, { error: "Not found" });
+function notFound(res, req = null) {
+  sendJson(res, 404, { error: "Not found" }, req);
 }
 
-function sendFile(res, filePath) {
+function sendFile(res, filePath, req = null) {
   const ext = path.extname(filePath).toLowerCase();
   const type = MIME_TYPES[ext] || "application/octet-stream";
   const body = fs.readFileSync(filePath);
-  res.writeHead(200, {
+  const headers = {
+    ...securityHeaders(req),
     "Content-Type": type,
-    "Cache-Control": "no-cache",
     "Content-Length": body.length
-  });
+  };
+  // Static assets can be cached briefly; HTML/JS stay fresh for safer deploys.
+  headers["Cache-Control"] = ext === ".html" || ext === ".js" ? "no-cache" : "public, max-age=300";
+  if (ext === ".html") {
+    headers["Content-Security-Policy"] = [
+      "default-src 'self'",
+      "img-src 'self' data: blob:",
+      "media-src 'self' data: blob:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "script-src 'self'",
+      `connect-src 'self' http://127.0.0.1:${PORT} http://localhost:${PORT}`,
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'"
+    ].join("; ");
+  }
+  res.writeHead(200, headers);
   res.end(body);
 }
 
@@ -569,13 +665,15 @@ function buildAnalytics(data) {
 
 async function handleRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  const json = (status, data) => sendJson(res, status, data, req);
+  const missing = () => notFound(res, req);
 
   if (req.method === "OPTIONS") {
-    return sendJson(res, 200, { ok: true });
+    return json(200, { ok: true });
   }
 
   if (req.method === "GET" && url.pathname === "/health") {
-    return sendJson(res, 200, {
+    return json(200, {
       ok: true,
       service: "callback-system",
       publicBaseUrl: PUBLIC_BASE_URL,
@@ -585,7 +683,8 @@ async function handleRequest(req, res) {
 
   if (req.method === "GET" && url.pathname === "/api/interactions") {
     const data = readStore();
-    return sendJson(res, 200, {
+    if (!requireAuth(req, res, data)) return;
+    return json(200, {
       interactions: data.callbackRequests.map((item) => toInteraction(item, data)),
       callbackRequests: data.callbackRequests
     });
@@ -593,33 +692,40 @@ async function handleRequest(req, res) {
 
   if (req.method === "GET" && url.pathname === "/api/notifications") {
     const data = readStore();
-    return sendJson(res, 200, { notifications: data.businessNotifications });
+    if (!requireAuth(req, res, data)) return;
+    return json(200, { notifications: data.businessNotifications });
   }
 
   if (req.method === "GET" && url.pathname === "/api/outbox") {
     const data = readStore();
-    return sendJson(res, 200, { smsOutbox: data.smsOutbox });
+    if (!requireAuth(req, res, data)) return;
+    return json(200, { smsOutbox: data.smsOutbox });
   }
 
   if (req.method === "GET" && url.pathname === "/api/analytics") {
     const data = readStore();
-    return sendJson(res, 200, { analytics: buildAnalytics(data) });
+    if (!requireAuth(req, res, data)) return;
+    return json(200, { analytics: buildAnalytics(data) });
   }
 
   if (req.method === "GET" && url.pathname === "/api/reviews") {
     const data = readStore();
-    return sendJson(res, 200, { reviews: data.reviews || [] });
+    if (!requireAuth(req, res, data)) return;
+    return json(200, { reviews: data.reviews || [] });
   }
 
   if (req.method === "GET" && url.pathname.startsWith("/api/customers/") && url.pathname.endsWith("/history")) {
     const phonePart = decodeURIComponent(url.pathname.replace("/api/customers/", "").replace(/\/history$/, ""));
     const data = readStore();
     const history = getCustomerHistory(data, phonePart);
-    const notes = (data.staffNotes || []).filter((note) =>
-      history.some((item) => item.id === note.requestId)
-        || normalizePhone(note.customerPhone || "") === normalizePhone(phonePart)
-    );
-    return sendJson(res, 200, {
+    const auth = getSessionAccount(req, data);
+    const notes = auth
+      ? (data.staffNotes || []).filter((note) =>
+          history.some((item) => item.id === note.requestId)
+            || normalizePhone(note.customerPhone || "") === normalizePhone(phonePart)
+        )
+      : [];
+    return json(200, {
       phone: phonePart,
       history,
       staffNotes: notes,
@@ -631,10 +737,10 @@ async function handleRequest(req, res) {
     const token = decodeURIComponent(url.pathname.replace("/api/request/", ""));
     const data = readStore();
     const missedCall = data.missedCalls.find((item) => item.token === token);
-    if (!missedCall) return notFound(res);
+    if (!missedCall) return missing();
 
     const history = getCustomerHistory(data, missedCall.callerPhone);
-    return sendJson(res, 200, {
+    return json(200, {
       missedCall,
       customerHistory: history,
       repeatCaller: history.length > 0
@@ -644,9 +750,10 @@ async function handleRequest(req, res) {
   if (req.method === "GET" && url.pathname.startsWith("/api/callback-requests/")) {
     const id = decodeURIComponent(url.pathname.replace("/api/callback-requests/", ""));
     const data = readStore();
+    if (!requireAuth(req, res, data)) return;
     const requestItem = findRequest(data, id);
-    if (!requestItem) return notFound(res);
-    return sendJson(res, 200, {
+    if (!requestItem) return missing();
+    return json(200, {
       callbackRequest: requestItem,
       interaction: toInteraction(requestItem, data)
     });
@@ -655,7 +762,7 @@ async function handleRequest(req, res) {
   if (req.method === "POST" && url.pathname === "/api/missed-call") {
     const payload = await readBody(req);
     const callerPhone = displayPhone(payload.callerPhone || payload.From || payload.from);
-    if (!callerPhone) return sendJson(res, 400, { error: "callerPhone is required" });
+    if (!callerPhone) return json(400, { error: "callerPhone is required" });
 
     const data = readStore();
     const missedCall = createMissedCall(payload, data);
@@ -669,7 +776,7 @@ async function handleRequest(req, res) {
     data.smsOutbox.unshift(sms);
     writeStore(data);
 
-    return sendJson(res, 201, {
+    return json(201, {
       missedCall,
       sms,
       customerHistory: getCustomerHistory(data, missedCall.callerPhone),
@@ -680,7 +787,7 @@ async function handleRequest(req, res) {
   if (req.method === "POST" && url.pathname === "/api/callback-requests") {
     const payload = await readBody(req);
     if (!payload.fullName || !payload.phone || !payload.reason) {
-      return sendJson(res, 400, { error: "fullName, phone, and reason are required" });
+      return json(400, { error: "fullName, phone, and reason are required" });
     }
 
     const data = readStore();
@@ -706,7 +813,7 @@ async function handleRequest(req, res) {
     data.smsOutbox.unshift(businessAlertSms, confirmationSms);
     writeStore(data);
 
-    return sendJson(res, 201, {
+    return json(201, {
       callbackRequest,
       interaction: toInteraction(callbackRequest, data),
       businessNotification: notification,
@@ -722,7 +829,10 @@ async function handleRequest(req, res) {
     const payload = await readBody(req);
     const data = readStore();
     const requestItem = findRequest(data, id);
-    if (!requestItem) return notFound(res);
+    if (!requestItem) return missing();
+
+    const staffOnlyActions = new Set(["mark_urgent", "complete", "assign"]);
+    if (staffOnlyActions.has(payload.action) && !requireAuth(req, res, data)) return;
 
     if (payload.action === "cancel") {
       requestItem.status = "Cancelled";
@@ -737,7 +847,7 @@ async function handleRequest(req, res) {
       data.smsOutbox.unshift(sms);
     } else if (payload.action === "reschedule") {
       if (!payload.date || !payload.time) {
-        return sendJson(res, 400, { error: "date and time are required to reschedule" });
+        return json(400, { error: "date and time are required to reschedule" });
       }
       requestItem.date = payload.date;
       requestItem.time = payload.time;
@@ -772,11 +882,11 @@ async function handleRequest(req, res) {
       requestItem.lastActivity = "Just now";
       requestItem.history = [...(requestItem.history || []), `Assigned to ${requestItem.assignedTo}`];
     } else {
-      return sendJson(res, 400, { error: "Unsupported action" });
+      return json(400, { error: "Unsupported action" });
     }
 
     writeStore(data);
-    return sendJson(res, 200, {
+    return json(200, {
       callbackRequest: requestItem,
       interaction: toInteraction(requestItem, data)
     });
@@ -786,11 +896,12 @@ async function handleRequest(req, res) {
     const id = decodeURIComponent(url.pathname.split("/")[3]);
     const payload = await readBody(req);
     const text = String(payload.text || "").trim();
-    if (!text) return sendJson(res, 400, { error: "text is required" });
+    if (!text) return json(400, { error: "text is required" });
 
     const data = readStore();
+    if (!requireAuth(req, res, data)) return;
     const requestItem = findRequest(data, id);
-    if (!requestItem) return notFound(res);
+    if (!requestItem) return missing();
 
     const note = {
       id: makeId("NOTE"),
@@ -807,7 +918,7 @@ async function handleRequest(req, res) {
     requestItem.history = [...(requestItem.history || []), `Staff note added by ${note.author}`];
     writeStore(data);
 
-    return sendJson(res, 201, {
+    return json(201, {
       note,
       interaction: toInteraction(requestItem, data)
     });
@@ -820,7 +931,7 @@ async function handleRequest(req, res) {
     const fullName = String(payload.fullName || "Anonymous").trim() || "Anonymous";
 
     if (!rating || rating < 1 || rating > 5) {
-      return sendJson(res, 400, { error: "rating must be between 1 and 5" });
+      return json(400, { error: "rating must be between 1 and 5" });
     }
 
     const data = readStore();
@@ -838,39 +949,42 @@ async function handleRequest(req, res) {
     data.reviews.unshift(review);
     writeStore(data);
 
-    return sendJson(res, 201, { review });
+    return json(201, { review });
   }
 
   if (req.method === "GET" && url.pathname === "/api/auth/status") {
     const data = readStore();
-    return sendJson(res, 200, {
+    return json(200, {
       hasAccounts: (data.accounts || []).length > 0,
       accountCount: (data.accounts || []).length
     });
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/signup") {
+    const rate = checkAuthRateLimit(req, "signup");
+    if (!rate.allowed) return sendRateLimited(res, req, rate.retryAfterSec);
+
     const payload = await readBody(req);
-    const businessName = String(payload.businessName || "").trim();
-    const ownerName = String(payload.ownerName || "").trim();
-    const email = String(payload.email || "").trim().toLowerCase();
+    const businessName = String(payload.businessName || "").trim().slice(0, 120);
+    const ownerName = String(payload.ownerName || "").trim().slice(0, 120);
+    const email = String(payload.email || "").trim().toLowerCase().slice(0, 190);
     const phone = displayPhone(payload.phone || "");
     const password = String(payload.password || "");
 
     if (!businessName || !ownerName || !email || !password) {
-      return sendJson(res, 400, { error: "businessName, ownerName, email, and password are required" });
+      return json(400, { error: "businessName, ownerName, email, and password are required" });
     }
-    if (password.length < 8) {
-      return sendJson(res, 400, { error: "Password must be at least 8 characters" });
+    if (!isStrongPassword(password)) {
+      return json(400, { error: "Password must be at least 8 characters and include a letter and a number" });
     }
-    if (!email.includes("@")) {
-      return sendJson(res, 400, { error: "A valid email is required" });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return json(400, { error: "A valid email is required" });
     }
 
     const data = readStore();
     data.accounts = data.accounts || [];
     if (data.accounts.some((item) => item.email === email)) {
-      return sendJson(res, 409, { error: "An account with this email already exists" });
+      return json(409, { error: "An account with this email already exists" });
     }
 
     const { salt, hash } = hashPassword(password);
@@ -894,8 +1008,9 @@ async function handleRequest(req, res) {
     const rememberMe = payload.rememberMe !== false;
     const session = createSession(data, account.id, { rememberMe });
     writeStore(data);
+    clearAuthRateLimit(req, "signup");
 
-    return sendJson(res, 201, {
+    return json(201, {
       account: publicAccount(account),
       token: session.token,
       expiresAt: session.expiresAt,
@@ -904,23 +1019,27 @@ async function handleRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/login") {
+    const rate = checkAuthRateLimit(req, "login");
+    if (!rate.allowed) return sendRateLimited(res, req, rate.retryAfterSec);
+
     const payload = await readBody(req);
-    const email = String(payload.email || "").trim().toLowerCase();
+    const email = String(payload.email || "").trim().toLowerCase().slice(0, 190);
     const password = String(payload.password || "");
     const rememberMe = Boolean(payload.rememberMe);
     if (!email || !password) {
-      return sendJson(res, 400, { error: "email and password are required" });
+      return json(400, { error: "email and password are required" });
     }
 
     const data = readStore();
     const account = (data.accounts || []).find((item) => item.email === email);
     if (!account || !verifyPassword(password, account.passwordSalt, account.passwordHash)) {
-      return sendJson(res, 401, { error: "Invalid email or password" });
+      return json(401, { error: "Invalid email or password" });
     }
 
     const session = createSession(data, account.id, { rememberMe });
     writeStore(data);
-    return sendJson(res, 200, {
+    clearAuthRateLimit(req, "login");
+    return json(200, {
       account: publicAccount(account),
       token: session.token,
       expiresAt: session.expiresAt,
@@ -933,14 +1052,14 @@ async function handleRequest(req, res) {
     const token = getBearerToken(req);
     data.sessions = (data.sessions || []).filter((item) => item.token !== token);
     writeStore(data);
-    return sendJson(res, 200, { ok: true });
+    return json(200, { ok: true });
   }
 
   if (req.method === "GET" && url.pathname === "/api/auth/me") {
     const data = readStore();
     const auth = getSessionAccount(req, data);
-    if (!auth) return sendJson(res, 401, { error: "Admin login required" });
-    return sendJson(res, 200, {
+    if (!auth) return json(401, { error: "Admin login required" });
+    return json(200, {
       account: publicAccount(auth.account),
       expiresAt: auth.session.expiresAt
     });
@@ -948,7 +1067,7 @@ async function handleRequest(req, res) {
 
   if (req.method === "GET" && url.pathname === "/api/settings") {
     const data = readStore();
-    return sendJson(res, 200, { settings: getSettings(data) });
+    return json(200, { settings: getSettings(data) });
   }
 
   if (req.method === "POST" && url.pathname === "/api/settings") {
@@ -963,12 +1082,13 @@ async function handleRequest(req, res) {
       endHour: Number(payload.endHour ?? getSettings(data).endHour) || 18
     };
     writeStore(data);
-    return sendJson(res, 200, { settings: data.settings });
+    return json(200, { settings: data.settings });
   }
 
   if (req.method === "GET" && url.pathname === "/api/staff") {
     const data = readStore();
-    return sendJson(res, 200, { staff: getStaff(data) });
+    if (!requireAuth(req, res, data)) return;
+    return json(200, { staff: getStaff(data) });
   }
 
   if (req.method === "POST" && url.pathname === "/api/staff") {
@@ -976,14 +1096,14 @@ async function handleRequest(req, res) {
     if (!requireAuth(req, res, data)) return;
     const payload = await readBody(req);
     const name = String(payload.name || "").trim();
-    if (!name) return sendJson(res, 400, { error: "name is required" });
+    if (!name) return json(400, { error: "name is required" });
 
     const staff = getStaff(data);
     let member;
 
     if (payload.id) {
       const index = staff.findIndex((item) => item.id === payload.id);
-      if (index === -1) return notFound(res);
+      if (index === -1) return missing();
       member = {
         ...staff[index],
         name,
@@ -1003,7 +1123,7 @@ async function handleRequest(req, res) {
 
     data.staff = staff;
     writeStore(data);
-    return sendJson(res, payload.id ? 200 : 201, { staff: data.staff, member });
+    return json(payload.id ? 200 : 201, { staff: data.staff, member });
   }
 
   if (req.method === "PATCH" && url.pathname.startsWith("/api/staff/")) {
@@ -1017,11 +1137,11 @@ async function handleRequest(req, res) {
       staff = staff.filter((item) => item.id !== id);
       data.staff = staff;
       writeStore(data);
-      return sendJson(res, 200, { staff });
+      return json(200, { staff });
     }
 
     const index = staff.findIndex((item) => item.id === id);
-    if (index === -1) return notFound(res);
+    if (index === -1) return missing();
     staff[index] = {
       ...staff[index],
       ...payload,
@@ -1029,20 +1149,20 @@ async function handleRequest(req, res) {
     };
     data.staff = staff;
     writeStore(data);
-    return sendJson(res, 200, { staff, member: staff[index] });
+    return json(200, { staff, member: staff[index] });
   }
 
   if (req.method === "GET") {
     const filePath = safeStaticPath(url.pathname);
-    if (filePath) return sendFile(res, filePath);
+    if (filePath) return sendFile(res, filePath, req);
   }
 
-  return notFound(res);
+  return missing();
 }
 
 const server = http.createServer((req, res) => {
   handleRequest(req, res).catch((error) => {
-    sendJson(res, 500, { error: error.message || "Server error" });
+    sendJson(res, 500, { error: error.message || "Server error" }, req);
   });
 });
 
